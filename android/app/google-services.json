@@ -1,0 +1,118 @@
+{
+  "project_info": {
+    "project_number": "641933931474",
+    "project_id": "doctorpoint-245df",
+    "storage_bucket": "doctorpoint-245df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:641933931474:android:c7b05b57cdab43703f8e0b",
+        "android_client_info": {
+          "package_name": "com.doctorpoint.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "641933931474-5n8ngl3m72q1te3p3u10tnc9ihvtd92o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDf7WsSZrjEHiXTOm_5fYC_CBhL_yb-ojY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "641933931474-5n8ngl3m72q1te3p3u10tnc9ihvtd92o.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "641933931474-81sl51i4nkcp4li8om5ki3taiaebg6qo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.doctorpoint.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:641933931474:android:e4641de806a181463f8e0b",
+        "android_client_info": {
+          "package_name": "com.example.doctor_point"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "641933931474-5n8ngl3m72q1te3p3u10tnc9ihvtd92o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDf7WsSZrjEHiXTOm_5fYC_CBhL_yb-ojY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "641933931474-5n8ngl3m72q1te3p3u10tnc9ihvtd92o.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "641933931474-81sl51i4nkcp4li8om5ki3taiaebg6qo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.doctorpoint.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:641933931474:android:c44159cc9c0c9ecc3f8e0b",
+        "android_client_info": {
+          "package_name": "com.example.doctorpoint_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "641933931474-5n8ngl3m72q1te3p3u10tnc9ihvtd92o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDf7WsSZrjEHiXTOm_5fYC_CBhL_yb-ojY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "641933931474-5n8ngl3m72q1te3p3u10tnc9ihvtd92o.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "641933931474-81sl51i4nkcp4li8om5ki3taiaebg6qo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.doctorpoint.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
