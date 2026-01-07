@@ -38,6 +38,12 @@ dependencies:
   url_launcher: ^6.1.15
   badges: ^3.0.0
   flutter_dotenv: ^5.2.0
+  flutter_rating_bar: ^4.0.1
+  flutter_bloc: ^9.1.1
+
+  # Localization - AJOUTÉ
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

@@ -284,7 +284,8 @@ class _SearchPageState extends State<SearchPage> {
             onFavoriteTap: () {
               Provider.of<DoctorProvider>(context, listen: false)
                   .toggleFavorite(doctor.id);
-            }, imageUrl: '',
+            },
+            isCompact: false,
           ),
         );
       },

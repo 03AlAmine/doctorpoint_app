@@ -31,10 +31,10 @@ class DoctorProvider with ChangeNotifier {
 
       // Pour les données mockées en attendant Firebase
       _doctors = _getMockDoctors();
-      
+
       // Extraire les spécialités uniques
       _extractSpecialties();
-      
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -56,7 +56,8 @@ class DoctorProvider with ChangeNotifier {
   }
 
   void _extractSpecialties() {
-    final specialties = _doctors.map((doctor) => doctor.specialization).toSet().toList();
+    final specialties =
+        _doctors.map((doctor) => doctor.specialization).toSet().toList();
     _availableSpecialties = ['All'] + specialties;
     notifyListeners();
   }
@@ -73,11 +74,13 @@ class DoctorProvider with ChangeNotifier {
         experience: 10,
         hospital: 'Hôpital Saint-Louis',
         department: 'Cardiologie',
-        imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
+        imageUrl:
+            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
         isFavorite: true,
         consultationFee: 80.0,
         languages: ['Français', 'Anglais', 'Espagnol'],
-        description: 'Spécialiste en cardiologie avec plus de 10 ans d\'expérience dans le traitement des maladies cardiovasculaires.',
+        description:
+            'Spécialiste en cardiologie avec plus de 10 ans d\'expérience dans le traitement des maladies cardiovasculaires.',
         availability: {
           'lundi': ['09:00', '14:00'],
           'mardi': ['10:00', '16:00'],
@@ -103,7 +106,8 @@ class DoctorProvider with ChangeNotifier {
         isFavorite: false,
         consultationFee: 70.0,
         languages: ['Français', 'Chinois'],
-        description: 'Expert en dermatologie esthétique et traitement des maladies de la peau.',
+        description:
+            'Expert en dermatologie esthétique et traitement des maladies de la peau.',
         availability: {
           'lundi': ['14:00', '18:00'],
           'mercredi': ['09:00', '13:00'],
@@ -120,11 +124,13 @@ class DoctorProvider with ChangeNotifier {
         experience: 12,
         hospital: 'Hôpital Necker',
         department: 'Pédiatrie',
-        imageUrl: 'https://images.unsplash.com/photo-1594824434340-7e7dfc37cabb',
+        imageUrl:
+            'https://images.unsplash.com/photo-1594824434340-7e7dfc37cabb',
         isFavorite: true,
         consultationFee: 65.0,
         languages: ['Français', 'Anglais'],
-        description: 'Pédiatre expérimentée spécialisée dans la santé des enfants et adolescents.',
+        description:
+            'Pédiatre expérimentée spécialisée dans la santé des enfants et adolescents.',
         availability: {
           'mardi': ['08:00', '12:00'],
           'jeudi': ['09:00', '17:00'],
@@ -141,11 +147,13 @@ class DoctorProvider with ChangeNotifier {
         experience: 15,
         hospital: 'Hôpital de la Pitié-Salpêtrière',
         department: 'Neurologie',
-        imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
+        imageUrl:
+            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
         isFavorite: false,
         consultationFee: 90.0,
         languages: ['Français', 'Espagnol'],
-        description: 'Neurologue spécialisé dans les troubles du système nerveux.',
+        description:
+            'Neurologue spécialisé dans les troubles du système nerveux.',
         availability: {
           'lundi': ['10:00', '16:00'],
           'mercredi': ['08:00', '14:00'],
@@ -166,7 +174,8 @@ class DoctorProvider with ChangeNotifier {
         isFavorite: true,
         consultationFee: 60.0,
         languages: ['Français', 'Anglais', 'Allemand'],
-        description: 'Dentiste générale spécialisée en orthodontie et implantologie.',
+        description:
+            'Dentiste générale spécialisée en orthodontie et implantologie.',
         availability: {
           'lundi': ['09:00', '18:00'],
           'mardi': ['08:00', '17:00'],
@@ -183,11 +192,13 @@ class DoctorProvider with ChangeNotifier {
         experience: 9,
         hospital: 'Institut de la Vision',
         department: 'Ophtalmologie',
-        imageUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7',
+        imageUrl:
+            'https://images.unsplash.com/photo-1537368910025-700350fe46c7',
         isFavorite: false,
         consultationFee: 75.0,
         languages: ['Français', 'Anglais'],
-        description: 'Spécialiste en chirurgie réfractive et traitement des maladies oculaires.',
+        description:
+            'Spécialiste en chirurgie réfractive et traitement des maladies oculaires.',
       ),
       Doctor(
         id: '7',
@@ -199,11 +210,13 @@ class DoctorProvider with ChangeNotifier {
         experience: 11,
         hospital: 'Hôpital Saint-Vincent',
         department: 'Gynécologie',
-        imageUrl: 'https://images.unsplash.com/photo-1594824434340-7e7dfc37cabb',
+        imageUrl:
+            'https://images.unsplash.com/photo-1594824434340-7e7dfc37cabb',
         isFavorite: true,
         consultationFee: 85.0,
         languages: ['Français', 'Arabe'],
-        description: 'Gynécologue obstétricienne spécialisée en suivi de grossesse.',
+        description:
+            'Gynécologue obstétricienne spécialisée en suivi de grossesse.',
       ),
       Doctor(
         id: '8',
@@ -215,31 +228,34 @@ class DoctorProvider with ChangeNotifier {
         experience: 14,
         hospital: 'Clinique Orthopédique',
         department: 'Orthopédie',
-        imageUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
+        imageUrl:
+            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
         isFavorite: false,
         consultationFee: 95.0,
         languages: ['Français', 'Arabe', 'Anglais'],
-        description: 'Chirurgien orthopédique spécialiste en traumatologie sportive.',
+        description:
+            'Chirurgien orthopédique spécialiste en traumatologie sportive.',
       ),
     ];
   }
 
   Future<void> toggleFavorite(String doctorId) async {
     final doctorIndex = _doctors.indexWhere((doctor) => doctor.id == doctorId);
-    final popularIndex = _popularDoctors.indexWhere((doctor) => doctor.id == doctorId);
-    
+    final popularIndex =
+        _popularDoctors.indexWhere((doctor) => doctor.id == doctorId);
+
     if (doctorIndex != -1) {
       _doctors[doctorIndex] = _doctors[doctorIndex].copyWith(
         isFavorite: !_doctors[doctorIndex].isFavorite,
       );
-      
+
       // Mettre à jour aussi dans popularDoctors si présent
       if (popularIndex != -1) {
         _popularDoctors[popularIndex] = _popularDoctors[popularIndex].copyWith(
           isFavorite: !_popularDoctors[popularIndex].isFavorite,
         );
       }
-      
+
       // Mettre à jour la liste des favoris
       _updateFavoriteDoctors();
       notifyListeners();
@@ -256,7 +272,9 @@ class DoctorProvider with ChangeNotifier {
       return _doctors;
     }
     return _doctors.where((doctor) {
-      return doctor.specialization.toLowerCase().contains(specialty.toLowerCase());
+      return doctor.specialization
+          .toLowerCase()
+          .contains(specialty.toLowerCase());
     }).toList();
   }
 
@@ -273,9 +291,9 @@ class DoctorProvider with ChangeNotifier {
 
     return _doctors.where((doctor) {
       return doctor.name.toLowerCase().contains(query.toLowerCase()) ||
-             doctor.specialization.toLowerCase().contains(query.toLowerCase()) ||
-             doctor.hospital.toLowerCase().contains(query.toLowerCase()) ||
-             doctor.department!.toLowerCase().contains(query.toLowerCase()) ;
+          doctor.specialization.toLowerCase().contains(query.toLowerCase()) ||
+          doctor.hospital.toLowerCase().contains(query.toLowerCase()) ||
+          doctor.department!.toLowerCase().contains(query.toLowerCase());
     }).toList();
   }
 
@@ -287,18 +305,25 @@ class DoctorProvider with ChangeNotifier {
   }) {
     List<Doctor> filtered = _doctors;
 
-    if (specialty != null && specialty.isNotEmpty && specialty.toLowerCase() != 'all') {
+    if (specialty != null &&
+        specialty.isNotEmpty &&
+        specialty.toLowerCase() != 'all') {
       filtered = filtered.where((doctor) {
-        return doctor.specialization.toLowerCase().contains(specialty.toLowerCase());
+        return doctor.specialization
+            .toLowerCase()
+            .contains(specialty.toLowerCase());
       }).toList();
     }
 
     if (minRating != null) {
-      filtered = filtered.where((doctor) => doctor.rating >= minRating).toList();
+      filtered =
+          filtered.where((doctor) => doctor.rating >= minRating).toList();
     }
 
     if (maxPrice != null) {
-      filtered = filtered.where((doctor) => doctor.consultationFee <= maxPrice).toList();
+      filtered = filtered
+          .where((doctor) => doctor.consultationFee <= maxPrice)
+          .toList();
     }
 
     if (hospital != null && hospital.isNotEmpty) {

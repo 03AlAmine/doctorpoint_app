@@ -8,13 +8,15 @@ class DoctorCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onFavoriteTap;
   final bool showDetails;
+  final bool isCompact; // Nouveau paramètre
 
   const DoctorCard({
     super.key,
     required this.doctor,
     required this.onTap,
     required this.onFavoriteTap,
-    this.showDetails = true, required String imageUrl,
+    this.showDetails = true,
+    this.isCompact = false, // Valeur par défaut
   });
 
   @override
@@ -22,9 +24,10 @@ class DoctorCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: isCompact ? 160 : 200, // Largeur adaptative
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isCompact ? 12 : 16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -40,12 +43,12 @@ class DoctorCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(isCompact ? 12 : 16),
+                    topRight: Radius.circular(isCompact ? 12 : 16),
                   ),
                   child: Container(
-                    height: 140,
+                    height: isCompact ? 100 : 140, // Hauteur adaptative
                     width: double.infinity,
                     color: AppTheme.lightGrey,
                     child: doctor.imageUrl.isNotEmpty
@@ -60,27 +63,27 @@ class DoctorCard extends StatelessWidget {
                             ),
                             errorWidget: (context, url, error) => Container(
                               color: AppTheme.lightGrey,
-                              child: const Center(
+                              child: Center(
                                 child: Icon(
                                   Icons.person,
-                                  size: 60,
+                                  size: isCompact ? 40 : 60,
                                   color: Colors.white,
                                 ),
                               ),
                             ),
                           )
-                        : const Center(
+                        : Center(
                             child: Icon(
                               Icons.person,
-                              size: 60,
+                              size: isCompact ? 40 : 60,
                               color: Colors.white,
                             ),
                           ),
                   ),
                 ),
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 6,
+                  right: 6,
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
@@ -91,8 +94,10 @@ class DoctorCard extends StatelessWidget {
                         doctor.isFavorite
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color: doctor.isFavorite ? Colors.red : AppTheme.greyColor,
-                        size: 20,
+                        color: doctor.isFavorite
+                            ? Colors.red
+                            : AppTheme.greyColor,
+                        size: isCompact ? 16 : 20,
                       ),
                       onPressed: onFavoriteTap,
                       padding: EdgeInsets.zero,
@@ -105,14 +110,14 @@ class DoctorCard extends StatelessWidget {
             
             // Informations du médecin
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: EdgeInsets.all(isCompact ? 8.0 : 12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     doctor.name,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: isCompact ? 14 : 16,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.textColor,
                     ),
@@ -122,9 +127,9 @@ class DoctorCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     doctor.specialization,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.primaryColor,
-                      fontSize: 14,
+                      fontSize: isCompact ? 12 : 14,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -135,17 +140,17 @@ class DoctorCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on,
-                          size: 14,
+                          size: isCompact ? 12 : 14,
                           color: AppTheme.greyColor,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             doctor.hospital,
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: TextStyle(
+                              fontSize: isCompact ? 10 : 12,
                               color: AppTheme.greyColor,
                             ),
                             maxLines: 1,
@@ -157,31 +162,31 @@ class DoctorCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.star,
-                          size: 16,
+                          size: isCompact ? 14 : 16,
                           color: Colors.amber,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '${doctor.rating}',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          style: TextStyle(
+                            fontSize: isCompact ? 12 : 14,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         Text(
                           ' (${doctor.reviews})',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: TextStyle(
+                            fontSize: isCompact ? 10 : 12,
                             color: AppTheme.greyColor,
                           ),
                         ),
                         const Spacer(),
                         Text(
                           '\$${doctor.consultationFee.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: TextStyle(
+                            fontSize: isCompact ? 14 : 16,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.primaryColor,
                           ),

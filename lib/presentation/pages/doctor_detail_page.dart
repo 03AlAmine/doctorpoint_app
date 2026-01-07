@@ -1,387 +1,683 @@
-import 'package:doctorpoint/data/models/appointment_model.dart';
+
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
+import 'package:doctorpoint/core/theme/app_theme.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:doctorpoint/core/providers/doctor_provider.dart';
+import 'package:doctorpoint/presentation/widgets/booking_modal.dart'; // Import ajouté
 
-
-class DoctorDetailPage extends StatelessWidget {
+class DoctorDetailPage extends StatefulWidget {
   final Doctor doctor;
 
-  const DoctorDetailPage({super.key, required this.doctor});
+  const DoctorDetailPage({
+    super.key,
+    required this.doctor,
+  });
+
+  @override
+  State<DoctorDetailPage> createState() => _DoctorDetailPageState();
+}
+
+class _DoctorDetailPageState extends State<DoctorDetailPage> {
+  int _selectedTimeSlot = 0;
+  DateTime _selectedDate = DateTime.now();
+  final PageController _pageController = PageController();
+  int _currentImageIndex = 0;
+
+  final List<String> _doctorImages = [
+    'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
+    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2',
+    'https://images.unsplash.com/photo-1537368910025-700350fe46c7',
+  ];
+
+  final List<Map<String, dynamic>> _timeSlots = [
+    {'time': '09:00 AM - 10:00 AM', 'isAvailable': true},
+    {'time': '10:00 AM - 11:00 AM', 'isAvailable': true},
+    {'time': '11:00 AM - 12:00 PM', 'isAvailable': false},
+    {'time': '02:00 PM - 03:00 PM', 'isAvailable': true},
+    {'time': '03:00 PM - 04:00 PM', 'isAvailable': true},
+    {'time': '04:00 PM - 05:00 PM', 'isAvailable': true},
+  ];
+
+  final List<DateTime> _availableDates = List.generate(
+    7,
+    (index) => DateTime.now().add(Duration(days: index)),
+  );
+
+  // Fonction pour afficher le modal de réservation
+  void _showBookingModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return BookingModal(doctor: widget.doctor);
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final doctorProvider = Provider.of<DoctorProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Image.network(
-                doctor.imageUrl,
-                fit: BoxFit.cover,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: doctor.isFavorite ? Colors.red : Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header avec photo du médecin
+              _buildDoctorHeader(screenWidth, doctorProvider),
+              
+              // Contenu principal
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 16 : 20,
+                  vertical: isSmallScreen ? 12 : 16,
                 ),
-                onPressed: () {},
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Nom et spécialité
+                    Text(
+                      widget.doctor.name,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 22 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textColor,
+                      ),
+                    ),
+                    SizedBox(height: isSmallScreen ? 4 : 8),
+                    Text(
+                      '${widget.doctor.specialization} - ${widget.doctor.hospital}',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        color: AppTheme.greyColor,
+                      ),
+                    ),
+                    
+                    SizedBox(height: isSmallScreen ? 16 : 20),
+                    
+                    // Statistiques
+                    _buildStatsSection(isSmallScreen),
+                    
+                    SizedBox(height: isSmallScreen ? 20 : 24),
+                    
+                    // À propos du médecin
+                    _buildAboutSection(isSmallScreen),
+                    
+                    SizedBox(height: isSmallScreen ? 20 : 24),
+                    
+                    // Horaires de travail
+                    _buildWorkingTimeSection(isSmallScreen),
+                    
+                    SizedBox(height: isSmallScreen ? 20 : 24),
+                    
+                    // Calendrier
+                    _buildCalendarSection(isSmallScreen),
+                    
+                    SizedBox(height: isSmallScreen ? 20 : 24),
+                    
+                    // Créneaux horaires
+                    _buildTimeSlotsSection(isSmallScreen),
+                    
+                    SizedBox(height: isSmallScreen ? 40 : 48),
+                  ],
+                ),
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    doctor.name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    doctor.specialization,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Note et expérience
-                  Row(
-                    children: [
-                      _buildInfoChip(
-                        Icons.star,
-                        '${doctor.rating}',
-                        'Note',
-                        Colors.amber,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildInfoChip(
-                        Icons.medical_services,
-                        '${doctor.experience} ans',
-                        'Expérience',
-                        Colors.green,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildInfoChip(
-                        Icons.people,
-                        '${doctor.reviews}',
-                        'Avis',
-                        Colors.blue,
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // À propos
-                  const Text(
-                    'À propos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Le Dr. Sarah Johnson est un cardiologue certifié avec plus de 10 ans d\'expérience dans le traitement des maladies cardiovasculaires.',
-                    style: TextStyle(color: Colors.grey[700]),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Disponibilité
-                  _buildAvailabilitySection(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Langues parlées
-                  _buildLanguagesSection(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Localisation
-                  _buildLocationSection(),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
         ),
-        child: Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Prix de consultation',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
+      ),
+      
+      // Bouton de prise de rendez-vous (MODIFIÉ)
+      bottomNavigationBar: _buildBookAppointmentButton(isSmallScreen, screenWidth),
+    );
+  }
+
+  Widget _buildDoctorHeader(double screenWidth, DoctorProvider provider) {
+    final isSmallScreen = screenWidth < 360;
+    final headerHeight = isSmallScreen ? 280.0 : 320.0;
+
+    return Stack(
+      children: [
+        // Images carousel
+        SizedBox(
+          height: headerHeight,
+          width: double.infinity,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
+            itemCount: _doctorImages.length,
+            itemBuilder: (context, index) {
+              return CachedNetworkImage(
+                imageUrl: _doctorImages[index],
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: AppTheme.lightGrey,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    ),
                   ),
                 ),
-                Text(
-                  '\$${doctor.consultationFee}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
+                errorWidget: (context, url, error) => Container(
+                  color: AppTheme.lightGrey,
+                  child: const Icon(Icons.person, size: 100, color: Colors.white),
                 ),
+              );
+            },
+          ),
+        ),
+        
+        // Overlay gradient
+        Container(
+          height: headerHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(0.5),
+                Colors.transparent,
+                Colors.transparent,
+                Colors.black.withOpacity(0.3),
               ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  _showBookingModal(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blue,
+          ),
+        ),
+        
+        // Boutons de navigation
+        Positioned(
+          top: isSmallScreen ? 12 : 16,
+          left: isSmallScreen ? 12 : 16,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(
+                minWidth: isSmallScreen ? 36 : 40,
+                minHeight: isSmallScreen ? 36 : 40,
+              ),
+            ),
+          ),
+        ),
+        
+        Positioned(
+          top: isSmallScreen ? 12 : 16,
+          right: isSmallScreen ? 12 : 16,
+          child: Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  shape: BoxShape.circle,
                 ),
-                child: const Text(
-                  'Prendre rendez-vous',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                child: IconButton(
+                  icon: Icon(
+                    widget.doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: widget.doctor.isFavorite ? Colors.red : Colors.black,
+                  ),
+                  onPressed: () {
+                    provider.toggleFavorite(widget.doctor.id);
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(
+                    minWidth: isSmallScreen ? 36 : 40,
+                    minHeight: isSmallScreen ? 36 : 40,
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoChip(IconData icon, String value, String label, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
+              SizedBox(width: isSmallScreen ? 8 : 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.share, color: Colors.black),
+                  onPressed: () {},
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(
+                    minWidth: isSmallScreen ? 36 : 40,
+                    minHeight: isSmallScreen ? 36 : 40,
+                  ),
+                ),
               ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvailabilitySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Disponibilité',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildTimeSlot('09:00 AM'),
-            _buildTimeSlot('10:30 AM'),
-            _buildTimeSlot('02:00 PM'),
-            _buildTimeSlot('04:30 PM'),
-            _buildTimeSlot('06:00 PM'),
-          ],
+        
+        // Indicateurs de page
+        Positioned(
+          bottom: isSmallScreen ? 16 : 20,
+          right: isSmallScreen ? 16 : 20,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 8 : 12,
+              vertical: isSmallScreen ? 4 : 6,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+            ),
+            child: Text(
+              '${_currentImageIndex + 1}/${_doctorImages.length}',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 12 : 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTimeSlot(String time) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue),
-      ),
-      child: Text(
-        time,
-        style: const TextStyle(
-          color: Colors.blue,
-          fontWeight: FontWeight.w500,
+  Widget _buildStatsSection(bool isSmallScreen) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _buildStatItem(
+          'Patients',
+          '1000+',
+          Icons.people_outline,
+          isSmallScreen,
         ),
-      ),
+        _buildStatItem(
+          'Expérience',
+          '${widget.doctor.experience} ans',
+          Icons.work_outline,
+          isSmallScreen,
+        ),
+        _buildStatItem(
+          'Avis',
+          '${widget.doctor.reviews}',
+          Icons.star_outline,
+          isSmallScreen,
+        ),
+        _buildStatItem(
+          'Tarif',
+          '\$${widget.doctor.consultationFee}',
+          Icons.attach_money_outlined,
+          isSmallScreen,
+        ),
+      ],
     );
   }
 
-  void _showBookingModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return BookingModal(doctor: doctor);
-      },
+  Widget _buildStatItem(String title, String value, IconData icon, bool isSmallScreen) {
+    return Column(
+      children: [
+        Container(
+          width: isSmallScreen ? 48 : 56,
+          height: isSmallScreen ? 48 : 56,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: AppTheme.primaryColor,
+            size: isSmallScreen ? 20 : 24,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 6 : 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 14 : 16,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 10 : 12,
+            color: AppTheme.greyColor,
+          ),
+        ),
+      ],
     );
   }
-  
-  _buildLanguagesSection() {}
-  
-  _buildLocationSection() {}
-}
 
-class BookingModal extends StatefulWidget {
-  final Doctor doctor;
+  Widget _buildAboutSection(bool isSmallScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'À propos du médecin',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 18 : 20,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 8 : 12),
+        Text(
+          widget.doctor.description ??
+              'Dr. ${widget.doctor.name.split(' ').last} est un spécialiste ${widget.doctor.specialization.toLowerCase()} renommé à ${widget.doctor.hospital}. Avec ${widget.doctor.experience} ans d\'expérience, il/elle a traité plus de 1000 patients et a reçu plusieurs prix pour sa contribution exceptionnelle dans son domaine. Il/elle est disponible pour des consultations privées.',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 14 : 16,
+            color: Colors.grey[600],
+            height: 1.5,
+          ),
+          textAlign: TextAlign.justify,
+        ),
+        
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        
+        // Langues parlées
+        Wrap(
+          spacing: isSmallScreen ? 8 : 12,
+          runSpacing: isSmallScreen ? 8 : 12,
+          children: widget.doctor.languages.map((language) {
+            return Chip(
+              label: Text(language),
+              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+              labelStyle: TextStyle(
+                color: AppTheme.primaryColor,
+                fontSize: isSmallScreen ? 12 : 14,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
 
-  const BookingModal({super.key, required this.doctor});
+  Widget _buildWorkingTimeSection(bool isSmallScreen) {
+    final Map<String, dynamic> schedule = widget.doctor.availability ?? {
+      'Lundi': ['09:00', '18:00'],
+      'Mardi': ['09:00', '18:00'],
+      'Mercredi': ['09:00', '18:00'],
+      'Jeudi': ['09:00', '18:00'],
+      'Vendredi': ['09:00', '18:00'],
+      'Samedi': ['09:00', '14:00'],
+      'Dimanche': ['Fermé'],
+    };
 
-  @override
-  // ignore: library_private_types_in_public_api
-  _BookingModalState createState() => _BookingModalState();
-}
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Horaires de travail',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 18 : 20,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        Container(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+            border: Border.all(color: AppTheme.lightGrey),
+          ),
+          child: Column(
+            children: schedule.entries.map((entry) {
+              final isClosed = entry.value[0] == 'Fermé';
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      entry.key,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        color: AppTheme.textColor,
+                      ),
+                    ),
+                    Text(
+                      isClosed ? 'Fermé' : '${entry.value[0]} - ${entry.value[1]}',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        color: isClosed ? Colors.red : AppTheme.primaryColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
 
-class _BookingModalState extends State<BookingModal> {
-  DateTime? _selectedDate;
-  String? _selectedTime;
-  AppointmentType _selectedType = AppointmentType.videoCall;
+  Widget _buildCalendarSection(bool isSmallScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Calendrier',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 18 : 20,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        SizedBox(
+          height: isSmallScreen ? 100 : 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _availableDates.length,
+            itemBuilder: (context, index) {
+              final date = _availableDates[index];
+              final isSelected = _selectedDate.day == date.day;
+              final isToday = date.day == DateTime.now().day;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                },
+                child: Container(
+                  width: isSmallScreen ? 70 : 80,
+                  margin: EdgeInsets.only(
+                    right: index == _availableDates.length - 1 ? 0 : 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.primaryColor : Colors.white,
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                    border: Border.all(
+                      color: isToday && !isSelected 
+                          ? AppTheme.primaryColor 
+                          : AppTheme.lightGrey,
+                      width: isToday && !isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        DateFormat('EEE').format(date),
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: isSelected ? Colors.white : AppTheme.greyColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 4 : 8),
+                      Text(
+                        DateFormat('dd').format(date),
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 20 : 24,
+                          color: isSelected ? Colors.white : AppTheme.textColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 4 : 8),
+                      Text(
+                        DateFormat('MMM').format(date),
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: isSelected ? Colors.white : AppTheme.greyColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTimeSlotsSection(bool isSmallScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Créneaux horaires disponibles',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 18 : 20,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        Wrap(
+          spacing: isSmallScreen ? 8 : 12,
+          runSpacing: isSmallScreen ? 8 : 12,
+          children: List.generate(_timeSlots.length, (index) {
+            final slot = _timeSlots[index];
+            final isSelected = _selectedTimeSlot == index;
+            final isAvailable = slot['isAvailable'] as bool;
+            
+            return GestureDetector(
+              onTap: isAvailable
+                  ? () {
+                      setState(() {
+                        _selectedTimeSlot = index;
+                      });
+                    }
+                  : null,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 16 : 20,
+                  vertical: isSmallScreen ? 10 : 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppTheme.primaryColor
+                      : isAvailable
+                          ? Colors.white
+                          : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : isAvailable
+                            ? AppTheme.lightGrey
+                            : Colors.grey[300]!,
+                  ),
+                ),
+                child: Text(
+                  slot['time'] as String,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                    color: isSelected
+                        ? Colors.white
+                        : isAvailable
+                            ? AppTheme.textColor
+                            : Colors.grey[400],
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBookAppointmentButton(bool isSmallScreen, double screenWidth) {
     return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 16 : 20,
+        vertical: isSmallScreen ? 12 : 16,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppTheme.lightGrey)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
         children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Prendre rendez-vous',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Type de consultation
-          const Text(
-            'Type de consultation',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildAppointmentTypeCard(
-                AppointmentType.videoCall,
-                Icons.videocam,
-                'Vidéo',
-                'Appel vidéo en direct',
+              Text(
+                'Tarif de consultation',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 14,
+                  color: AppTheme.greyColor,
+                ),
               ),
-              const SizedBox(width: 12),
-              _buildAppointmentTypeCard(
-                AppointmentType.voiceCall,
-                Icons.call,
-                'Audio',
-                'Appel téléphonique',
+              Text(
+                '\$${widget.doctor.consultationFee}',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 20 : 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 24),
-          
-          // Date
-          const Text(
-            'Sélectionner une date',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildDateSelector(),
-          
-          const SizedBox(height: 24),
-          
-          // Heure
-          const Text(
-            'Sélectionner une heure',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildTimeSelector(),
-          
-          const SizedBox(height: 32),
-          
-          // Bouton de confirmation
+          const Spacer(),
           ElevatedButton(
-            onPressed: () {
-              _confirmBooking();
-            },
+            onPressed: _showBookingModal, // MODIFIÉ: Appel du modal
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              minimumSize: const Size(double.infinity, 56),
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 24 : 32,
+                vertical: isSmallScreen ? 14 : 16,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              ),
             ),
-            child: const Text(
-              'Confirmer le rendez-vous',
+            child: Text(
+              'Prendre rendez-vous',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontSize: isSmallScreen ? 14 : 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -390,188 +686,5 @@ class _BookingModalState extends State<BookingModal> {
     );
   }
 
-  Widget _buildAppointmentTypeCard(
-    AppointmentType type,
-    IconData icon,
-    String title,
-    String description,
-  ) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedType = type;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _selectedType == type 
-                ? Colors.blue.withOpacity(0.1)
-                : Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _selectedType == type 
-                  ? Colors.blue
-                  : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: Colors.blue, size: 24),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: _selectedType == type ? Colors.blue : Colors.black,
-                ),
-              ),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateSelector() {
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 7,
-        itemBuilder: (context, index) {
-          final date = DateTime.now().add(Duration(days: index));
-          final isSelected = _selectedDate?.day == date.day;
-          
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDate = date;
-              });
-            },
-            child: Container(
-              width: 60,
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.blue : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _getDayName(date.weekday),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    date.day.toString(),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    _getMonthName(date.month),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTimeSelector() {
-    final times = ['09:00', '10:30', '14:00', '16:30', '18:00'];
-    
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: times.map((time) {
-        final isSelected = _selectedTime == time;
-        
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedTime = time;
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.blue : Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              time,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  String _getDayName(int weekday) {
-    switch (weekday) {
-      case 1: return 'Lun';
-      case 2: return 'Mar';
-      case 3: return 'Mer';
-      case 4: return 'Jeu';
-      case 5: return 'Ven';
-      case 6: return 'Sam';
-      case 7: return 'Dim';
-      default: return '';
-    }
-  }
-
-  String _getMonthName(int month) {
-    switch (month) {
-      case 1: return 'Jan';
-      case 2: return 'Fév';
-      case 3: return 'Mar';
-      case 4: return 'Avr';
-      case 5: return 'Mai';
-      case 6: return 'Jun';
-      case 7: return 'Jul';
-      case 8: return 'Aoû';
-      case 9: return 'Sep';
-      case 10: return 'Oct';
-      case 11: return 'Nov';
-      case 12: return 'Déc';
-      default: return '';
-    }
-  }
-
-  void _confirmBooking() {
-    // Logique de confirmation du rendez-vous
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Rendez-vous confirmé avec succès !'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
+  // SUPPRIMER les anciennes fonctions de confirmation et garder seulement _showBookingModal
 }

@@ -1,3 +1,4 @@
+
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/presentation/pages/search_page.dart';
 import 'package:doctorpoint/presentation/widgets/doctor_card.dart';
@@ -41,6 +42,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final doctorProvider = Provider.of<DoctorProvider>(context);
     final specialtyProvider = Provider.of<SpecialtyProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: SafeArea(
@@ -52,45 +55,55 @@ class _HomePageState extends State<HomePage> {
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header avec recherche et notifications
-                  _buildHeader(context),
-                  const SizedBox(height: 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: screenHeight,
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.04,
+                  vertical: 12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header avec recherche et notifications
+                    _buildHeader(context, screenWidth),
+                    SizedBox(height: screenHeight * 0.02),
 
-                  // Carousel des promotions
-                  _buildPromotionCarousel(),
-                  const SizedBox(height: 24),
+                    // Carousel des promotions
+                    _buildPromotionCarousel(screenWidth),
+                    SizedBox(height: screenHeight * 0.03),
 
-                  // Catégories de spécialités
-                  _buildSpecialtyCategories(specialtyProvider),
-                  const SizedBox(height: 24),
+                    // Catégories de spécialités
+                    _buildSpecialtyCategories(specialtyProvider, screenWidth),
+                    SizedBox(height: screenHeight * 0.03),
 
-                  // Médecins populaires
-                  _buildPopularDoctors(doctorProvider),
-                  const SizedBox(height: 24),
+                    // Médecins populaires
+                    _buildPopularDoctors(doctorProvider, screenWidth),
+                    SizedBox(height: screenHeight * 0.03),
 
-                  // Recommandés pour vous
-                  _buildAllDoctors(doctorProvider),
-                  const SizedBox(height: 24),
+                    // Recommandés pour vous
+                    _buildAllDoctors(doctorProvider, screenWidth),
+                    SizedBox(height: screenHeight * 0.03),
 
-                  // Section de bien-être
-                  _buildWellnessSection(),
-                  const SizedBox(height: 16), // Espace final
-                ],
+                    // Section de bien-être
+                    _buildWellnessSection(screenWidth),
+                    SizedBox(height: screenHeight * 0.02), // Espace final
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      // SUPPRIMER la bottomNavigationBar
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,8 +111,8 @@ class _HomePageState extends State<HomePage> {
           children: [
             // Photo de profil utilisateur
             Container(
-              width: 48,
-              height: 48,
+              width: isSmallScreen ? 42 : 48,
+              height: isSmallScreen ? 42 : 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppTheme.primaryColor.withOpacity(0.1),
@@ -110,59 +123,85 @@ class _HomePageState extends State<HomePage> {
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
                     color: AppTheme.lightGrey,
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.primaryColor),
+                      ),
                     ),
                   ),
-                  errorWidget: (context, url, error) => const Icon(
+                  errorWidget: (context, url, error) => Icon(
                     Icons.person,
                     color: AppTheme.primaryColor,
-                    size: 24,
+                    size: isSmallScreen ? 20 : 24,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: isSmallScreen ? 8 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Bonjour, John',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textColor,
-                        ),
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     'Comment allez-vous aujourd\'hui ?',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.greyColor,
-                        ),
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 12 : 14,
+                      color: AppTheme.greyColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             badges.Badge(
               position: badges.BadgePosition.topEnd(top: -5, end: -5),
-              badgeContent: const Text(
+              badgeContent: Text(
                 '3',
-                style: TextStyle(fontSize: 10, color: Colors.white),
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 8 : 10,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              badgeStyle: const badges.BadgeStyle(
+              badgeStyle: badges.BadgeStyle(
                 badgeColor: Colors.red,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 4 : 5,
+                  vertical: isSmallScreen ? 1 : 2,
+                ),
               ),
               child: IconButton(
-                icon: const Icon(Icons.notifications_outlined),
+                icon: Icon(
+                  Icons.notifications_outlined,
+                  size: isSmallScreen ? 22 : 24,
+                ),
                 color: AppTheme.textColor,
                 onPressed: () {
                   // Naviguer vers les notifications
                 },
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: isSmallScreen ? 36 : 40,
+                  minHeight: isSmallScreen ? 36 : 40,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: screenWidth * 0.04),
         // Barre de recherche
         GestureDetector(
           onTap: () {
@@ -174,10 +213,13 @@ class _HomePageState extends State<HomePage> {
             );
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 10 : 12,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
               border: Border.all(color: AppTheme.lightGrey),
               boxShadow: [
                 BoxShadow(
@@ -187,16 +229,30 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.search, color: AppTheme.greyColor),
-                SizedBox(width: 12),
-                Text(
-                  'Rechercher un médecin, une spécialité...',
-                  style: TextStyle(color: AppTheme.greyColor),
+                Icon(
+                  Icons.search,
+                  color: AppTheme.greyColor,
+                  size: isSmallScreen ? 18 : 20,
                 ),
-                Spacer(),
-                Icon(Icons.tune, color: AppTheme.greyColor),
+                SizedBox(width: isSmallScreen ? 8 : 12),
+                Expanded(
+                  child: Text(
+                    'Rechercher un médecin, une spécialité...',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 13 : 14,
+                      color: AppTheme.greyColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  Icons.tune,
+                  color: AppTheme.greyColor,
+                  size: isSmallScreen ? 18 : 20,
+                ),
               ],
             ),
           ),
@@ -205,11 +261,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildPromotionCarousel() {
+  Widget _buildPromotionCarousel(double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    final carouselHeight = isSmallScreen ? 140.0 : 160.0;
+
     return Column(
       children: [
         SizedBox(
-          height: 160,
+          height: carouselHeight,
           child: PageView.builder(
             onPageChanged: (index) {
               setState(() {
@@ -220,9 +279,9 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (context, index) {
               final promotion = _promotions[index];
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+                margin: EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 16),
                   gradient: LinearGradient(
                     colors: promotion['gradient'] as List<Color>,
                     begin: Alignment.topLeft,
@@ -230,7 +289,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: EdgeInsets.all(isSmallScreen ? 16.0 : 20.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,34 +301,46 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Text(
                               promotion['title'] as String,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: isSmallScreen ? 16 : 18,
                                 fontWeight: FontWeight.bold,
+                                height: 1.2,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: isSmallScreen ? 6 : 8),
                             Text(
                               promotion['subtitle'] as String,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white70,
-                                fontSize: 14,
+                                fontSize: isSmallScreen ? 12 : 14,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: promotion['color'] as Color,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: promotion['color'] as Color,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 16 : 20,
+                              vertical: isSmallScreen ? 10 : 12,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'Découvrir',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 13 : 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        child: const Text('Découvrir'),
                       ),
                     ],
                   ),
@@ -278,15 +349,15 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8 : 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             _promotions.length,
             (index) => Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: isSmallScreen ? 6 : 8,
+              height: isSmallScreen ? 6 : 8,
+              margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 3 : 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _currentPromotion == index
@@ -300,17 +371,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSpecialtyCategories(SpecialtyProvider specialtyProvider) {
+  Widget _buildSpecialtyCategories(
+      SpecialtyProvider specialtyProvider, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    final categoryHeight = isSmallScreen ? 110.0 : 120.0;
+    final iconSize = isSmallScreen ? 24.0 : 28.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Spécialités',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmallScreen ? 16 : 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textColor,
               ),
@@ -324,16 +400,30 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               },
-              child: const Text('Tout voir'),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Tout voir',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 13 : 14,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8 : 12),
         SizedBox(
-          height: 120, // Augmenté pour éviter le débordement
+          height: categoryHeight,
           child: specialtyProvider.isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(),
+              ? Center(
+                  child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                  ),
                 )
               : ListView.builder(
                   scrollDirection: Axis.horizontal,
@@ -341,6 +431,9 @@ class _HomePageState extends State<HomePage> {
                   itemCount: specialtyProvider.specialties.take(8).length,
                   itemBuilder: (context, index) {
                     final specialty = specialtyProvider.specialties[index];
+                    final itemWidth = isSmallScreen ? 80.0 : 90.0;
+                    final iconContainerSize = isSmallScreen ? 60.0 : 70.0;
+
                     return GestureDetector(
                       onTap: () {
                         specialtyProvider.selectSpecialty(specialty);
@@ -352,45 +445,51 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                       child: Container(
-                        width: 90, // Légèrement plus large
+                        width: itemWidth,
                         margin: EdgeInsets.only(
                           right: index ==
                                   specialtyProvider.specialties.take(8).length -
                                       1
                               ? 0
-                              : 12,
+                              : isSmallScreen
+                                  ? 8
+                                  : 12,
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              width: 70,
-                              height: 70,
+                              width: iconContainerSize,
+                              height: iconContainerSize,
                               decoration: BoxDecoration(
                                 color: specialty.color.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(
+                                    isSmallScreen ? 12 : 16),
                               ),
                               child: Center(
-                                child: _getSpecialtyIcon(specialty.name),
+                                child:
+                                    _getSpecialtyIcon(specialty.name, iconSize),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              specialty.name,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.textColor,
+                            SizedBox(height: isSmallScreen ? 6 : 8),
+                            Flexible(
+                              child: Text(
+                                specialty.name,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 11 : 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textColor,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: isSmallScreen ? 2 : 4),
                             Text(
                               '${specialty.doctorCount}',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: isSmallScreen ? 9 : 10,
                                 color: specialty.color,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -406,7 +505,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _getSpecialtyIcon(String name) {
+  Widget _getSpecialtyIcon(String name, double size) {
     IconData iconData;
     Color color;
 
@@ -448,20 +547,25 @@ class _HomePageState extends State<HomePage> {
         color = AppTheme.primaryColor;
     }
 
-    return Icon(iconData, color: color, size: 28);
+    return Icon(iconData, color: color, size: size);
   }
 
-  Widget _buildPopularDoctors(DoctorProvider doctorProvider) {
+  Widget _buildPopularDoctors(
+      DoctorProvider doctorProvider, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    final cardHeight = isSmallScreen ? 200.0 : 240.0; // Réduit la hauteur
+    final cardWidth = isSmallScreen ? 180.0 : 220.0; // Réduit la largeur
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Médecins populaires',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmallScreen ? 16 : 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textColor,
               ),
@@ -475,39 +579,59 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               },
-              child: const Text('Tout voir'),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Tout voir',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 13 : 14,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8 : 12),
         if (doctorProvider.isLoading)
-          const Center(
+          Center(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              ),
             ),
           )
         else if (doctorProvider.error != null)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: EdgeInsets.symmetric(vertical: 20),
             child: Text(
               'Erreur: ${doctorProvider.error}',
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: isSmallScreen ? 13 : 14,
+              ),
               textAlign: TextAlign.center,
             ),
           )
         else if (doctorProvider.popularDoctors.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Text(
               'Aucun médecin populaire pour le moment',
-              style: TextStyle(color: AppTheme.greyColor),
+              style: TextStyle(
+                color: AppTheme.greyColor,
+                fontSize: isSmallScreen ? 13 : 14,
+              ),
               textAlign: TextAlign.center,
             ),
           )
         else
           SizedBox(
-            height: 240, // Augmenté pour éviter le débordement
+            height: cardHeight, // Hauteur fixe pour le conteneur
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -515,11 +639,13 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 final doctor = doctorProvider.popularDoctors[index];
                 return Container(
-                  width: 220, // Légèrement plus large
+                  width: cardWidth,
                   margin: EdgeInsets.only(
                     right: index == doctorProvider.popularDoctors.length - 1
                         ? 0
-                        : 16,
+                        : isSmallScreen
+                            ? 12
+                            : 16,
                   ),
                   child: DoctorCard(
                     doctor: doctor,
@@ -535,7 +661,7 @@ class _HomePageState extends State<HomePage> {
                     onFavoriteTap: () {
                       doctorProvider.toggleFavorite(doctor.id);
                     },
-                    imageUrl: '',
+                    isCompact: isSmallScreen, // Conserver uniquement celui-ci
                   ),
                 );
               },
@@ -545,17 +671,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAllDoctors(DoctorProvider doctorProvider) {
+  Widget _buildAllDoctors(DoctorProvider doctorProvider, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Recommandés pour vous',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isSmallScreen ? 16 : 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textColor,
               ),
@@ -569,33 +697,53 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               },
-              child: const Text('Tout voir'),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Tout voir',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 13 : 14,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8 : 12),
         if (doctorProvider.isLoading)
-          const Center(
+          Center(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              ),
             ),
           )
         else if (doctorProvider.error != null)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: EdgeInsets.symmetric(vertical: 20),
             child: Text(
               'Erreur: ${doctorProvider.error}',
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: isSmallScreen ? 13 : 14,
+              ),
               textAlign: TextAlign.center,
             ),
           )
         else if (doctorProvider.doctors.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Text(
               'Aucun médecin disponible',
-              style: TextStyle(color: AppTheme.greyColor),
+              style: TextStyle(
+                color: AppTheme.greyColor,
+                fontSize: isSmallScreen ? 13 : 14,
+              ),
               textAlign: TextAlign.center,
             ),
           )
@@ -603,8 +751,9 @@ class _HomePageState extends State<HomePage> {
           Column(
             children: doctorProvider.doctors.take(3).map((doctor) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildDoctorListItem(doctor, doctorProvider),
+                padding: EdgeInsets.only(bottom: isSmallScreen ? 12 : 16),
+                child:
+                    _buildDoctorListItem(doctor, doctorProvider, screenWidth),
               );
             }).toList(),
           ),
@@ -612,7 +761,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDoctorListItem(Doctor doctor, DoctorProvider provider) {
+  Widget _buildDoctorListItem(
+      Doctor doctor, DoctorProvider provider, double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+    final isMediumScreen = screenWidth < 400;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -624,11 +777,11 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),
@@ -642,13 +795,13 @@ class _HomePageState extends State<HomePage> {
             children: [
               // Image du médecin
               ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(isSmallScreen ? 12 : 16),
+                  bottomLeft: Radius.circular(isSmallScreen ? 12 : 16),
                 ),
                 child: Container(
-                  width: 100,
-                  height: 140,
+                  width: isSmallScreen ? 80 : (isMediumScreen ? 90 : 100),
+                  height: isSmallScreen ? 120 : (isMediumScreen ? 130 : 140),
                   color: AppTheme.lightGrey,
                   child: doctor.imageUrl.isNotEmpty
                       ? CachedNetworkImage(
@@ -656,29 +809,32 @@ class _HomePageState extends State<HomePage> {
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             color: AppTheme.lightGrey,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppTheme.primaryColor),
+                              ),
                             ),
                           ),
                           errorWidget: (context, url, error) => Container(
                             color: AppTheme.lightGrey,
-                            child: const Icon(
+                            child: Icon(
                               Icons.person,
-                              size: 40,
+                              size: isSmallScreen ? 30 : 40,
                               color: Colors.white,
                             ),
                           ),
                         )
-                      : const Icon(
+                      : Icon(
                           Icons.person,
-                          size: 40,
+                          size: isSmallScreen ? 30 : 40,
                           color: Colors.white,
                         ),
                 ),
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -691,22 +847,24 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Text(
                                   doctor.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16,
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.textColor,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: isSmallScreen ? 2 : 4),
                                 Text(
                                   doctor.specialization,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppTheme.primaryColor,
-                                    fontSize: 14,
+                                    fontSize: isSmallScreen ? 12 : 14,
                                     fontWeight: FontWeight.w500,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -719,7 +877,7 @@ class _HomePageState extends State<HomePage> {
                               color: doctor.isFavorite
                                   ? Colors.red
                                   : AppTheme.greyColor,
-                              size: 20,
+                              size: isSmallScreen ? 16 : 20,
                             ),
                             onPressed: () {
                               provider.toggleFavorite(doctor.id);
@@ -729,20 +887,20 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.medical_services,
-                            size: 16,
+                            size: isSmallScreen ? 14 : 16,
                             color: AppTheme.greyColor,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: isSmallScreen ? 3 : 4),
                           Expanded(
                             child: Text(
                               doctor.hospital,
-                              style: const TextStyle(
-                                fontSize: 13,
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 11 : 13,
                                 color: AppTheme.greyColor,
                               ),
                               maxLines: 1,
@@ -751,70 +909,76 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.star,
-                            size: 16,
+                            size: isSmallScreen ? 14 : 16,
                             color: Colors.amber,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: isSmallScreen ? 3 : 4),
                           Text(
                             doctor.rating.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 12 : 14,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          Text(
-                            ' (${doctor.reviews} avis)',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.greyColor,
+                          SizedBox(width: isSmallScreen ? 2 : 4),
+                          Flexible(
+                            child: Text(
+                              '(${doctor.reviews} avis)',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 10 : 12,
+                                color: AppTheme.greyColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const Spacer(),
                           Text(
                             '\$${doctor.consultationFee.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 14 : 16,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.primaryColor,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.work,
-                            size: 16,
+                            size: isSmallScreen ? 14 : 16,
                             color: AppTheme.greyColor,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: isSmallScreen ? 3 : 4),
                           Text(
                             '${doctor.experience} ans exp.',
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 10 : 12,
                               color: AppTheme.greyColor,
                             ),
                           ),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 8 : 12,
+                              vertical: isSmallScreen ? 3 : 4,
                             ),
                             decoration: BoxDecoration(
                               color: AppTheme.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                                  BorderRadius.circular(isSmallScreen ? 6 : 8),
                             ),
                             child: Text(
-                              'Available',
+                              'Disponible',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: isSmallScreen ? 10 : 12,
                                 color: AppTheme.primaryColor,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -833,54 +997,56 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildWellnessSection() {
+  Widget _buildWellnessSection(double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Bien-être & Santé',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: isSmallScreen ? 16 : 18,
             fontWeight: FontWeight.bold,
             color: AppTheme.textColor,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallScreen ? 8 : 12),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue.shade50, Colors.green.shade50],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.health_and_safety,
-                size: 40,
+                size: isSmallScreen ? 32 : 40,
                 color: AppTheme.primaryColor,
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: isSmallScreen ? 12 : 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Conseils de santé',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: isSmallScreen ? 14 : 16,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textColor,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: isSmallScreen ? 2 : 4),
                     Text(
                       'Découvrez nos articles sur la prévention et le bien-être',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: isSmallScreen ? 11 : 13,
                         color: Colors.grey[600],
                       ),
                       maxLines: 2,
@@ -890,9 +1056,17 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.arrow_forward),
+                icon: Icon(
+                  Icons.arrow_forward,
+                  size: isSmallScreen ? 20 : 24,
+                ),
                 onPressed: () {},
                 color: AppTheme.primaryColor,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: isSmallScreen ? 36 : 40,
+                  minHeight: isSmallScreen ? 36 : 40,
+                ),
               ),
             ],
           ),
@@ -901,49 +1075,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  BottomNavigationBar _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: 0,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: AppTheme.primaryColor,
-      unselectedItemColor: AppTheme.greyColor,
-      selectedLabelStyle: const TextStyle(fontSize: 12),
-      unselectedLabelStyle: const TextStyle(fontSize: 12),
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      elevation: 8,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Accueil',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today_outlined),
-          activeIcon: Icon(Icons.calendar_today),
-          label: 'Rendez-vous',
-        ),
-        BottomNavigationBarItem(
-          icon: Badge(
-            label: Text('3'),
-            child: Icon(Icons.chat_bubble_outline),
-          ),
-          activeIcon: Badge(
-            label: Text('3'),
-            child: Icon(Icons.chat_bubble),
-          ),
-          label: 'Messages',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
-          label: 'Profil',
-        ),
-      ],
-      onTap: (index) {
-        // Gérer la navigation
-      },
-    );
-  }
+  // SUPPRIMER la fonction _buildBottomNavigationBar
 }
