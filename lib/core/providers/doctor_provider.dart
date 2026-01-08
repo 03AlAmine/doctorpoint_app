@@ -29,14 +29,17 @@ class DoctorProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Pour les données mockées en attendant Firebase
-      _doctors = _getMockDoctors();
-
-      // Extraire les spécialités uniques
-      _extractSpecialties();
-
-      _isLoading = false;
-      notifyListeners();
+      // ESSAYER FIREBASE D'ABORD
+      try {
+        await loadDoctorsFromFirebase();
+      } catch (e) {
+        print('Firebase non disponible, utilisation des données mockées: $e');
+        // Fallback sur les données mockées
+        _doctors = _getMockDoctors();
+        _extractSpecialties();
+        _isLoading = false;
+        notifyListeners();
+      }
     } catch (e) {
       _isLoading = false;
       _error = e.toString();
@@ -338,6 +341,100 @@ class DoctorProvider with ChangeNotifier {
   void refreshData() {
     loadDoctors();
     loadPopularDoctors();
+  }
+
+  // ==================== MÉTHODES FIREBASE ====================
+
+  Future<void> addDoctorToFirebase(Doctor doctor) async {
+    try {
+      print('Tentative d\'ajout du médecin à Firebase...');
+      print('Doctor ID: ${doctor.id}');
+      print('Doctor Name: ${doctor.name}');
+      
+      await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(doctor.id)
+          .set(doctor.toMap());
+
+      print('Médecin ajouté avec succès à Firebase!');
+      
+      // Ajouter aussi à la liste locale
+      _doctors.add(doctor);
+      _extractSpecialties();
+      notifyListeners();
+    } catch (e) {
+      print('Erreur lors de l\'ajout du médecin: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateDoctorInFirebase(Doctor doctor) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(doctor.id)
+          .update(doctor.toMap());
+
+      // Mettre à jour la liste locale
+      final index = _doctors.indexWhere((d) => d.id == doctor.id);
+      if (index != -1) {
+        _doctors[index] = doctor;
+        _extractSpecialties();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Erreur lors de la mise à jour du médecin: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteDoctorFromFirebase(String doctorId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(doctorId)
+          .delete();
+
+      // Supprimer de la liste locale
+      _doctors.removeWhere((doctor) => doctor.id == doctorId);
+      _extractSpecialties();
+      notifyListeners();
+    } catch (e) {
+      print('Erreur lors de la suppression du médecin: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> loadDoctorsFromFirebase() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      print('Chargement des médecins depuis Firebase...');
+      
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('doctors')
+          .orderBy('name')
+          .get();
+
+      print('${querySnapshot.docs.length} médecins trouvés dans Firebase');
+      
+      _doctors = querySnapshot.docs.map((doc) {
+        return Doctor.fromFirestore(doc);
+      }).toList();
+
+      _extractSpecialties();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      print('Erreur lors du chargement depuis Firebase: $e');
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      rethrow; // Important: rethrow pour que l'erreur soit capturée
+    }
   }
 }
 

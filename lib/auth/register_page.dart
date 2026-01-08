@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:doctorpoint/services/auth_service.dart';
-import 'package:doctorpoint/presentation/pages/setup_profile_page.dart';
 import 'package:doctorpoint/core/constants/app_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -119,15 +118,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               password: passCtrl.text.trim(),
                               fullName: nameCtrl.text.trim(),
                               phone: phoneCtrl.text.trim(),
-                            );
-
-                            if (!mounted) return;
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    SetupProfileScreen(uid: user.uid),
-                              ),
                             );
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(

@@ -22,6 +22,11 @@ class Doctor {
   final List<String>? education;
   final List<String>? certifications;
   final DateTime? createdAt;
+  final String? password; // AJOUTEZ CE CHAMP
+  final bool? hasAccount; // Pour savoir si le médecin a un compte
+  final String? accountStatus; // pending, active, inactive
+  final DateTime? lastLogin;
+  final List<String>? roles; // ['doctor', 'admin'] etc.
 
   Doctor({
     required this.id,
@@ -42,6 +47,11 @@ class Doctor {
     this.location,
     this.phoneNumber,
     this.email,
+    this.password, // AJOUTEZ
+    this.hasAccount = false, // AJOUTEZ
+    this.accountStatus = 'pending', // AJOUTEZ
+    this.lastLogin, // AJOUTEZ
+    this.roles = const ['doctor'], // AJOUTEZ
     this.education,
     this.certifications,
     this.createdAt,
@@ -70,6 +80,11 @@ class Doctor {
       location: data['location'],
       phoneNumber: data['phoneNumber'],
       email: data['email'],
+      password: data['password'], // AJOUTEZ
+      hasAccount: data['hasAccount'] ?? false, // AJOUTEZ
+      accountStatus: data['accountStatus'] ?? 'pending', // AJOUTEZ
+      lastLogin: data['lastLogin']?.toDate(), // AJOUTEZ
+      roles: List<String>.from(data['roles'] ?? ['doctor']), // AJOUTEZ
       education: data['education'] != null
           ? List<String>.from(data['education'])
           : null,
@@ -81,27 +96,37 @@ class Doctor {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'name': name,
       'specialization': specialization,
-      'specialtyIcon': specialtyIcon,
       'rating': rating,
       'reviews': reviews,
       'experience': experience,
       'hospital': hospital,
-      'department': department,
       'imageUrl': imageUrl,
       'isFavorite': isFavorite,
       'consultationFee': consultationFee,
       'languages': languages,
-      'description': description,
-      'availability': availability,
-      'location': location,
-      'phoneNumber': phoneNumber,
-      'email': email,
-      'education': education,
-      'certifications': certifications,
-      'createdAt': createdAt ?? FieldValue.serverTimestamp(),
+      'hasAccount': hasAccount ?? false, // AJOUTEZ
+      'accountStatus': accountStatus ?? 'pending', // AJOUTEZ
+      'roles': roles ?? ['doctor'], // AJOUTEZ
+      'createdAt': FieldValue.serverTimestamp(),
     };
+
+    // Champs optionnels
+    if (specialtyIcon != null) map['specialtyIcon'] = specialtyIcon;
+    if (department != null) map['department'] = department;
+    if (description != null) map['description'] = description;
+    if (availability != null) map['availability'] = availability;
+    if (location != null) map['location'] = location;
+    if (phoneNumber != null) map['phoneNumber'] = phoneNumber;
+    if (email != null) map['email'] = email;
+    if (password != null) map['password'] = password; // AJOUTEZ
+    if (hasAccount != null) map['hasAccount'] = hasAccount;
+    if (lastLogin != null) map['lastLogin'] = Timestamp.fromDate(lastLogin!);
+    if (education != null) map['education'] = education;
+    if (certifications != null) map['certifications'] = certifications;
+    
+    return map;
   }
 }

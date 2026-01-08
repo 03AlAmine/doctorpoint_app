@@ -1,9 +1,11 @@
+import 'package:doctorpoint/auth/admin_login.dart';
+import 'package:doctorpoint/auth/doctor_login_page.dart';
+import 'package:doctorpoint/presentation/pages/admin/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:doctorpoint/services/auth_service.dart';
 import 'package:doctorpoint/presentation/pages/home_page.dart';
 import 'package:doctorpoint/core/constants/app_colors.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -94,6 +96,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('Se connecter'),
               ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminLoginScreen(),
+                  ),
+                );
+              },
+              child: const Text('Accéder à l\'interface admin'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DoctorLoginPage(),
+                  ),
+                );
+              },
+              child: const Text('Accéder à l\'espace médecin'),
             ),
           ],
         ),

@@ -1,7 +1,6 @@
 import 'package:doctorpoint/auth/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:doctorpoint/presentation/pages/onboarding_page.dart';
-import 'package:doctorpoint/presentation/pages/setup_profile_page.dart';
 import 'package:doctorpoint/presentation/pages/home_page.dart';
 import 'package:doctorpoint/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,15 +35,6 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-        break;
-
-      case 'setup':
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SetupProfileScreen(uid: user!.uid),
-          ),
         );
         break;
 

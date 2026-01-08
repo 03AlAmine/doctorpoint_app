@@ -1,6 +1,11 @@
+import 'package:doctorpoint/auth/doctor_login_page.dart';
 import 'package:doctorpoint/auth/login_page.dart';
 import 'package:doctorpoint/core/providers/auth_provider.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
+import 'package:doctorpoint/presentation/pages/admin/admin_dashboard.dart';
+import 'package:doctorpoint/presentation/pages/admin/admin_doctor_form.dart';
+import 'package:doctorpoint/presentation/pages/admin/admin_doctors_page.dart';
+import 'package:doctorpoint/presentation/pages/doctor/doctor_dashboard.dart';
 import 'package:doctorpoint/presentation/pages/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,7 +22,6 @@ import 'package:doctorpoint/presentation/pages/all_specialties_page.dart';
 import 'package:doctorpoint/presentation/pages/search_page.dart';
 import 'package:doctorpoint/presentation/pages/appointments_page.dart';
 import 'package:doctorpoint/presentation/pages/onboarding_page.dart';
-import 'package:doctorpoint/presentation/pages/setup_profile_page.dart';
 
 import 'firebase_options.dart';
 
@@ -28,8 +32,11 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialiser le formatage des dates en français
+  // Initialiser le formatage des dates
   await initializeDateFormatting('fr_FR');
+
+  // Initialiser la base de données (optionnel)
+  // await FirebaseInitializer.initializeDatabase();
 
   runApp(const MyApp());
 }
@@ -51,7 +58,9 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         home: const Root(), // Changé pour Root
         routes: {
-          '/home': (context) => const HomePage(userName: '',),
+          '/home': (context) => const HomePage(
+                userName: '',
+              ),
           '/doctor-detail': (context) {
             final doctor =
                 ModalRoute.of(context)!.settings.arguments as Doctor?;
@@ -64,9 +73,18 @@ class MyApp extends StatelessWidget {
           // Routes d'authentification
           '/onboarding': (context) => const OnboardingScreen(),
           '/login': (context) => const LoginScreen(),
-          '/setup-profile': (context) {
+         /* '/setup-profile': (context) {
             final uid = ModalRoute.of(context)!.settings.arguments as String?;
             return SetupProfileScreen(uid: uid ?? '');
+          },*/
+          '/admin': (context) => const AdminDashboard(),
+          '/admin/doctors': (context) => const AdminDoctorsPage(),
+          '/admin/doctor-form': (context) => const AdminDoctorForm(),
+          '/doctor-login': (context) => const DoctorLoginPage(),
+          '/doctor-dashboard': (context) {
+            final doctor =
+                ModalRoute.of(context)!.settings.arguments as Doctor?;
+            return DoctorDashboard(doctor: doctor!);
           },
         },
         // Localizations config
@@ -122,19 +140,12 @@ class _RootState extends State<Root> {
             return const LoginScreen();
           }
         } else {
-          // Utilisateur connecté
-          if (authProvider.userProfile == null ||
-              authProvider.userProfile!.isProfileIncomplete) {
-            // Profil incomplet, rediriger vers la configuration
-            return SetupProfileScreen(uid: authProvider.user!.uid);
-          } else {
             // Profil complet, aller à l'accueil
-            return const HomePage(userName: '',);
+            return const HomePage(
+              userName: '',
+            );
           }
         }
-      },
     );
   }
-
-  
 }
