@@ -15,13 +15,11 @@ class AuthChoiceScreen extends StatelessWidget {
           children: [
             Image.asset('assets/images/logo.png', height: 100),
             const SizedBox(height: 40),
-
             const Text(
               'Créer un compte gratuitement',
               style: TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 20),
-
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF16A085),
@@ -31,21 +29,19 @@ class AuthChoiceScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const RegisterScreen(),
+                    builder: (_) => const RegisterPage(),
                   ),
                 );
               },
               child: const Text('Créer un compte'),
             ),
-
             const SizedBox(height: 12),
-
             OutlinedButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const LoginScreen(),
+                    builder: (_) => const LoginPage(),
                   ),
                 );
               },

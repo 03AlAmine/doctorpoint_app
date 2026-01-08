@@ -1,5 +1,6 @@
 import 'package:doctorpoint/core/providers/auth_provider.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
+import 'package:doctorpoint/presentation/pages/profile/patient_profile_page.dart';
 import 'package:doctorpoint/presentation/pages/search_page.dart';
 import 'package:doctorpoint/presentation/widgets/doctor_card.dart';
 import 'package:flutter/material.dart';
@@ -43,17 +44,15 @@ class _HomePageState extends State<HomePage> {
   int _currentPromotion = 0;
 
   // Liste des pages pour la navigation AJOUTÉ
+// Dans la liste des pages du bottom navigation
   final List<Widget> _pages = [
-    Container(), // Placeholder - sera rempli par le contenu HomePage
+    Container(), // Placeholder pour Home
     const AppointmentsPage(),
     Container(
       color: Colors.white,
       child: const Center(child: Text('Messages - Page à créer')),
     ),
-    Container(
-      color: Colors.white,
-      child: const Center(child: Text('Profil - Page à créer')),
-    ),
+    const PatientProfilePage(), // ← Ici le profil patient
   ];
 
   // Fonction pour changer d'onglet AJOUTÉ

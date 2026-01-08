@@ -485,7 +485,6 @@ class _AdminDoctorsPageState extends State<AdminDoctorsPage> {
           ElevatedButton(
             onPressed: () {
               // Pour l'instant, on simule
-              final doctorProvider = Provider.of<DoctorProvider>(context, listen: false);
               // Dans un vrai app, vous devriez implémenter cette méthode
               // doctorProvider.deleteDoctor(doctor.id);
               

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:doctorpoint/presentation/pages/onboarding_page.dart';
 import 'package:doctorpoint/presentation/pages/home_page.dart';
 import 'package:doctorpoint/services/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,7 +27,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    final user = FirebaseAuth.instance.currentUser;
 
     switch (result) {
       case 'onboarding':
@@ -51,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen> {
       default:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const LoginPage()),
         );
     }
   }

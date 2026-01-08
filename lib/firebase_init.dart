@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseInitializer {
   static Future<void> initializeDatabase() async {
-    final db = FirebaseFirestore.instance;
     
     // Créer la collection doctors si elle n'existe pas
     // (Firestore crée automatiquement les collections)

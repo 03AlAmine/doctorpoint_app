@@ -19,8 +19,6 @@ class DoctorProvider with ChangeNotifier {
 
   DoctorProvider() {
     loadDoctors();
-    loadPopularDoctors();
-    _extractSpecialties();
   }
 
   Future<void> loadDoctors() async {
@@ -29,238 +27,81 @@ class DoctorProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // ESSAYER FIREBASE D'ABORD
-      try {
-        await loadDoctorsFromFirebase();
-      } catch (e) {
-        print('Firebase non disponible, utilisation des données mockées: $e');
-        // Fallback sur les données mockées
-        _doctors = _getMockDoctors();
-        _extractSpecialties();
-        _isLoading = false;
-        notifyListeners();
-      }
+      await loadDoctorsFromFirebase();
     } catch (e) {
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
+      print('Erreur lors du chargement des médecins: $e');
     }
   }
 
   Future<void> loadPopularDoctors() async {
     try {
-      // Pour les données mockées en attendant Firebase
-      _popularDoctors = _getMockDoctors().take(4).toList();
-      notifyListeners();
+      if (_doctors.isNotEmpty) {
+        final sorted = List<Doctor>.from(_doctors);
+        sorted.sort((a, b) => b.rating.compareTo(a.rating));
+
+        _popularDoctors = sorted.take(4).toList();
+
+        notifyListeners();
+      }
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
+      print('Erreur lors du chargement des médecins populaires: $e');
     }
   }
 
   void _extractSpecialties() {
-    final specialties =
-        _doctors.map((doctor) => doctor.specialization).toSet().toList();
-    _availableSpecialties = ['All'] + specialties;
+    final specialties = _doctors
+        .map((doctor) => doctor.specialization)
+        .where((specialty) => specialty.isNotEmpty)
+        .toSet()
+        .toList();
+
+    specialties.sort();
+    _availableSpecialties = ['Tous'] + specialties;
     notifyListeners();
   }
 
-  List<Doctor> _getMockDoctors() {
-    return [
-      Doctor(
-        id: '1',
-        name: 'Dr. Sarah Johnson',
-        specialization: 'Cardiologue',
-        specialtyIcon: 'assets/icons/heart.svg',
-        rating: 4.8,
-        reviews: 120,
-        experience: 10,
-        hospital: 'Hôpital Saint-Louis',
-        department: 'Cardiologie',
-        imageUrl:
-            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
-        isFavorite: true,
-        consultationFee: 80.0,
-        languages: ['Français', 'Anglais', 'Espagnol'],
-        description:
-            'Spécialiste en cardiologie avec plus de 10 ans d\'expérience dans le traitement des maladies cardiovasculaires.',
-        availability: {
-          'lundi': ['09:00', '14:00'],
-          'mardi': ['10:00', '16:00'],
-          'mercredi': ['08:00', '13:00'],
-        },
-        location: const GeoPoint(48.8566, 2.3522),
-        phoneNumber: '+33123456789',
-        email: 'sarah.johnson@hospital.com',
-        education: ['MD, Université de Paris', 'Spécialisation en Cardiologie'],
-        certifications: ['Certified Cardiologist', 'Board Certified'],
-      ),
-      Doctor(
-        id: '2',
-        name: 'Dr. Michael Chen',
-        specialization: 'Dermatologue',
-        specialtyIcon: 'assets/icons/skin.svg',
-        rating: 4.9,
-        reviews: 89,
-        experience: 8,
-        hospital: 'Clinique du Marais',
-        department: 'Dermatologie',
-        imageUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2',
-        isFavorite: false,
-        consultationFee: 70.0,
-        languages: ['Français', 'Chinois'],
-        description:
-            'Expert en dermatologie esthétique et traitement des maladies de la peau.',
-        availability: {
-          'lundi': ['14:00', '18:00'],
-          'mercredi': ['09:00', '13:00'],
-          'vendredi': ['10:00', '16:00'],
-        },
-      ),
-      Doctor(
-        id: '3',
-        name: 'Dr. Emma Wilson',
-        specialization: 'Pédiatre',
-        specialtyIcon: 'assets/icons/child.svg',
-        rating: 4.7,
-        reviews: 156,
-        experience: 12,
-        hospital: 'Hôpital Necker',
-        department: 'Pédiatrie',
-        imageUrl:
-            'https://images.unsplash.com/photo-1594824434340-7e7dfc37cabb',
-        isFavorite: true,
-        consultationFee: 65.0,
-        languages: ['Français', 'Anglais'],
-        description:
-            'Pédiatre expérimentée spécialisée dans la santé des enfants et adolescents.',
-        availability: {
-          'mardi': ['08:00', '12:00'],
-          'jeudi': ['09:00', '17:00'],
-          'samedi': ['09:00', '13:00'],
-        },
-      ),
-      Doctor(
-        id: '4',
-        name: 'Dr. James Rodriguez',
-        specialization: 'Neurologue',
-        specialtyIcon: 'assets/icons/brain.svg',
-        rating: 4.6,
-        reviews: 95,
-        experience: 15,
-        hospital: 'Hôpital de la Pitié-Salpêtrière',
-        department: 'Neurologie',
-        imageUrl:
-            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
-        isFavorite: false,
-        consultationFee: 90.0,
-        languages: ['Français', 'Espagnol'],
-        description:
-            'Neurologue spécialisé dans les troubles du système nerveux.',
-        availability: {
-          'lundi': ['10:00', '16:00'],
-          'mercredi': ['08:00', '14:00'],
-          'vendredi': ['09:00', '15:00'],
-        },
-      ),
-      Doctor(
-        id: '5',
-        name: 'Dr. Sophie Martin',
-        specialization: 'Dentiste',
-        specialtyIcon: 'assets/icons/tooth.svg',
-        rating: 4.8,
-        reviews: 112,
-        experience: 7,
-        hospital: 'Centre Dentaire Paris',
-        department: 'Dentisterie',
-        imageUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2',
-        isFavorite: true,
-        consultationFee: 60.0,
-        languages: ['Français', 'Anglais', 'Allemand'],
-        description:
-            'Dentiste générale spécialisée en orthodontie et implantologie.',
-        availability: {
-          'lundi': ['09:00', '18:00'],
-          'mardi': ['08:00', '17:00'],
-          'jeudi': ['10:00', '19:00'],
-        },
-      ),
-      Doctor(
-        id: '6',
-        name: 'Dr. Thomas Bernard',
-        specialization: 'Ophtalmologue',
-        specialtyIcon: 'assets/icons/eye.svg',
-        rating: 4.5,
-        reviews: 78,
-        experience: 9,
-        hospital: 'Institut de la Vision',
-        department: 'Ophtalmologie',
-        imageUrl:
-            'https://images.unsplash.com/photo-1537368910025-700350fe46c7',
-        isFavorite: false,
-        consultationFee: 75.0,
-        languages: ['Français', 'Anglais'],
-        description:
-            'Spécialiste en chirurgie réfractive et traitement des maladies oculaires.',
-      ),
-      Doctor(
-        id: '7',
-        name: 'Dr. Marie Dubois',
-        specialization: 'Gynécologue',
-        specialtyIcon: 'assets/icons/female.svg',
-        rating: 4.9,
-        reviews: 134,
-        experience: 11,
-        hospital: 'Hôpital Saint-Vincent',
-        department: 'Gynécologie',
-        imageUrl:
-            'https://images.unsplash.com/photo-1594824434340-7e7dfc37cabb',
-        isFavorite: true,
-        consultationFee: 85.0,
-        languages: ['Français', 'Arabe'],
-        description:
-            'Gynécologue obstétricienne spécialisée en suivi de grossesse.',
-      ),
-      Doctor(
-        id: '8',
-        name: 'Dr. Ahmed Khan',
-        specialization: 'Orthopédiste',
-        specialtyIcon: 'assets/icons/bone.svg',
-        rating: 4.7,
-        reviews: 67,
-        experience: 14,
-        hospital: 'Clinique Orthopédique',
-        department: 'Orthopédie',
-        imageUrl:
-            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
-        isFavorite: false,
-        consultationFee: 95.0,
-        languages: ['Français', 'Arabe', 'Anglais'],
-        description:
-            'Chirurgien orthopédique spécialiste en traumatologie sportive.',
-      ),
-    ];
-  }
-
   Future<void> toggleFavorite(String doctorId) async {
-    final doctorIndex = _doctors.indexWhere((doctor) => doctor.id == doctorId);
-    final popularIndex =
-        _popularDoctors.indexWhere((doctor) => doctor.id == doctorId);
+    try {
+      final doctorIndex =
+          _doctors.indexWhere((doctor) => doctor.id == doctorId);
+      final popularIndex =
+          _popularDoctors.indexWhere((doctor) => doctor.id == doctorId);
 
-    if (doctorIndex != -1) {
-      _doctors[doctorIndex] = _doctors[doctorIndex].copyWith(
-        isFavorite: !_doctors[doctorIndex].isFavorite,
-      );
+      if (doctorIndex != -1) {
+        final newFavoriteStatus = !_doctors[doctorIndex].isFavorite;
 
-      // Mettre à jour aussi dans popularDoctors si présent
-      if (popularIndex != -1) {
-        _popularDoctors[popularIndex] = _popularDoctors[popularIndex].copyWith(
-          isFavorite: !_popularDoctors[popularIndex].isFavorite,
+        // Mettre à jour dans Firebase
+        await FirebaseFirestore.instance
+            .collection('doctors')
+            .doc(doctorId)
+            .update({
+          'isFavorite': newFavoriteStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // Mettre à jour localement
+        _doctors[doctorIndex] = _doctors[doctorIndex].copyWith(
+          isFavorite: newFavoriteStatus,
         );
-      }
 
-      // Mettre à jour la liste des favoris
-      _updateFavoriteDoctors();
+        // Mettre à jour aussi dans popularDoctors si présent
+        if (popularIndex != -1) {
+          _popularDoctors[popularIndex] =
+              _popularDoctors[popularIndex].copyWith(
+            isFavorite: newFavoriteStatus,
+          );
+        }
+
+        // Mettre à jour la liste des favoris
+        _updateFavoriteDoctors();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Erreur lors de la modification du favori: $e');
+      _error = e.toString();
       notifyListeners();
     }
   }
@@ -271,7 +112,7 @@ class DoctorProvider with ChangeNotifier {
   }
 
   List<Doctor> getDoctorsBySpecialty(String specialty) {
-    if (specialty.toLowerCase() == 'all') {
+    if (specialty == 'Tous' || specialty.isEmpty) {
       return _doctors;
     }
     return _doctors.where((doctor) {
@@ -292,11 +133,12 @@ class DoctorProvider with ChangeNotifier {
   List<Doctor> searchDoctors(String query) {
     if (query.isEmpty) return _doctors;
 
+    final lowerQuery = query.toLowerCase();
     return _doctors.where((doctor) {
-      return doctor.name.toLowerCase().contains(query.toLowerCase()) ||
-          doctor.specialization.toLowerCase().contains(query.toLowerCase()) ||
-          doctor.hospital.toLowerCase().contains(query.toLowerCase()) ||
-          doctor.department!.toLowerCase().contains(query.toLowerCase());
+      return doctor.name.toLowerCase().contains(lowerQuery) ||
+          doctor.specialization.toLowerCase().contains(lowerQuery) ||
+          doctor.hospital.toLowerCase().contains(lowerQuery) ||
+          (doctor.department?.toLowerCase().contains(lowerQuery) ?? false);
     }).toList();
   }
 
@@ -308,9 +150,7 @@ class DoctorProvider with ChangeNotifier {
   }) {
     List<Doctor> filtered = _doctors;
 
-    if (specialty != null &&
-        specialty.isNotEmpty &&
-        specialty.toLowerCase() != 'all') {
+    if (specialty != null && specialty.isNotEmpty && specialty != 'Tous') {
       filtered = filtered.where((doctor) {
         return doctor.specialization
             .toLowerCase()
@@ -340,27 +180,31 @@ class DoctorProvider with ChangeNotifier {
 
   void refreshData() {
     loadDoctors();
-    loadPopularDoctors();
   }
 
   // ==================== MÉTHODES FIREBASE ====================
 
   Future<void> addDoctorToFirebase(Doctor doctor) async {
     try {
-      print('Tentative d\'ajout du médecin à Firebase...');
+      print('Ajout du médecin à Firebase...');
       print('Doctor ID: ${doctor.id}');
       print('Doctor Name: ${doctor.name}');
-      
+
       await FirebaseFirestore.instance
           .collection('doctors')
           .doc(doctor.id)
-          .set(doctor.toMap());
+          .set({
+        ...doctor.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       print('Médecin ajouté avec succès à Firebase!');
-      
+
       // Ajouter aussi à la liste locale
       _doctors.add(doctor);
       _extractSpecialties();
+      loadPopularDoctors(); // Recharger les médecins populaires
       notifyListeners();
     } catch (e) {
       print('Erreur lors de l\'ajout du médecin: $e');
@@ -373,13 +217,17 @@ class DoctorProvider with ChangeNotifier {
       await FirebaseFirestore.instance
           .collection('doctors')
           .doc(doctor.id)
-          .update(doctor.toMap());
+          .update({
+        ...doctor.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       // Mettre à jour la liste locale
       final index = _doctors.indexWhere((d) => d.id == doctor.id);
       if (index != -1) {
         _doctors[index] = doctor;
         _extractSpecialties();
+        loadPopularDoctors(); // Recharger les médecins populaires
         notifyListeners();
       }
     } catch (e) {
@@ -398,6 +246,7 @@ class DoctorProvider with ChangeNotifier {
       // Supprimer de la liste locale
       _doctors.removeWhere((doctor) => doctor.id == doctorId);
       _extractSpecialties();
+      loadPopularDoctors(); // Recharger les médecins populaires
       notifyListeners();
     } catch (e) {
       print('Erreur lors de la suppression du médecin: $e');
@@ -412,28 +261,31 @@ class DoctorProvider with ChangeNotifier {
       notifyListeners();
 
       print('Chargement des médecins depuis Firebase...');
-      
+
       final querySnapshot = await FirebaseFirestore.instance
           .collection('doctors')
           .orderBy('name')
           .get();
 
       print('${querySnapshot.docs.length} médecins trouvés dans Firebase');
-      
+
       _doctors = querySnapshot.docs.map((doc) {
         return Doctor.fromFirestore(doc);
       }).toList();
 
       _extractSpecialties();
+      _updateFavoriteDoctors();
+      loadPopularDoctors();
 
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       print('Erreur lors du chargement depuis Firebase: $e');
       _isLoading = false;
-      _error = e.toString();
+      _error =
+          'Impossible de charger les médecins. Vérifiez votre connexion internet.';
       notifyListeners();
-      rethrow; // Important: rethrow pour que l'erreur soit capturée
+      rethrow;
     }
   }
 }

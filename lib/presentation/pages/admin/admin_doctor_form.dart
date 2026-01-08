@@ -357,7 +357,6 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
   // AJOUTEZ CETTE MÉTHODE POUR L'UPLOAD DES IMAGES
   Future<String> _uploadImageToFirebase(XFile imageFile) async {
     try {
-      // TODO: Implémentez l'upload vers Firebase Storage
       // Pour l'instant, retournez une URL d'image par défaut
       // Vous pouvez utiliser firebase_storage package
 
@@ -397,7 +396,6 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
 
       print('Compte Firebase Authentication créé pour ${doctor.name}');
 
-      // TODO: Envoyer un email de bienvenue avec les identifiants
       // Vous pouvez utiliser Firebase Functions pour cela
     } catch (e) {
       print('Erreur lors de la création du compte auth: $e');

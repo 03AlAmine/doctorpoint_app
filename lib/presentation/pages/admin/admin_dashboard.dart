@@ -1,4 +1,5 @@
 import 'package:doctorpoint/presentation/pages/admin/admin_doctors_page.dart';
+import 'package:doctorpoint/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
 
@@ -20,7 +21,7 @@ class AdminDashboard extends StatelessWidget {
             // Statistiques
             _buildStatsRow(),
             const SizedBox(height: 30),
-            
+
             // Actions principales
             Expanded(
               child: GridView.count(
@@ -43,54 +44,41 @@ class AdminDashboard extends StatelessWidget {
                       );
                     },
                   ),
-                  
                   _buildActionCard(
                     icon: Icons.calendar_today,
                     title: 'Rendez-vous',
                     subtitle: 'Voir tous les RDV',
                     color: Colors.green,
-                    onTap: () {
-                      // TODO: Implémenter la page des rendez-vous admin
-                    },
+                    onTap: () {},
                   ),
-                  
                   _buildActionCard(
                     icon: Icons.person,
                     title: 'Patients',
                     subtitle: 'Gérer les patients',
                     color: Colors.purple,
-                    onTap: () {
-                      // TODO: Implémenter la page des patients admin
-                    },
+                    onTap: () {},
                   ),
-                  
                   _buildActionCard(
                     icon: Icons.bar_chart,
                     title: 'Statistiques',
                     subtitle: 'Voir les rapports',
                     color: Colors.orange,
-                    onTap: () {
-                      // TODO: Implémenter la page des statistiques
-                    },
+                    onTap: () {},
                   ),
-                  
                   _buildActionCard(
                     icon: Icons.settings,
                     title: 'Paramètres',
                     subtitle: 'Configurer l\'app',
                     color: Colors.grey,
-                    onTap: () {
-                      // TODO: Implémenter les paramètres admin
-                    },
+                    onTap: () {},
                   ),
-                  
                   _buildActionCard(
                     icon: Icons.logout,
                     title: 'Déconnexion',
                     subtitle: 'Quitter l\'admin',
                     color: Colors.red,
                     onTap: () {
-                      Navigator.pop(context);
+                      _showLogoutConfirmation(context);
                     },
                   ),
                 ],
@@ -100,6 +88,67 @@ class AdminDashboard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+// Ajoutez ces méthodes dans votre classe AdminDashboard :
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Déconnexion'),
+        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => _performLogout(context),
+            child:
+                const Text('Déconnecter', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performLogout(BuildContext context) async {
+    try {
+      // Fermer la boîte de dialogue
+      Navigator.pop(context);
+
+      // Montrer un indicateur de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Effectuer la déconnexion
+      final authService = AuthService();
+      await authService.signOut();
+
+      // Fermer l'indicateur de chargement
+      Navigator.pop(context);
+
+      // Rediriger vers la page de connexion
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login', // Remplacez par votre route de connexion
+        (route) => false,
+      );
+    } catch (e) {
+      // Fermer l'indicateur de chargement en cas d'erreur
+      Navigator.pop(context);
+
+      // Afficher l'erreur
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur de déconnexion: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildStatsRow() {

@@ -12,10 +12,9 @@ class AdminLoginScreen extends StatefulWidget {
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   Future<void> _login() async {
-    // TODO: Implémenter une authentification admin sécurisée
     // Pour l'instant, simple vérification
     if (_usernameController.text == 'admin' && _passwordController.text == 'admin123') {
       Navigator.pushReplacement(
