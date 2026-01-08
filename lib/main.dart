@@ -1,4 +1,7 @@
+import 'package:doctorpoint/auth/login_page.dart';
+import 'package:doctorpoint/core/providers/auth_provider.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
+import 'package:doctorpoint/presentation/pages/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -13,19 +16,21 @@ import 'package:doctorpoint/presentation/pages/all_doctors_page.dart';
 import 'package:doctorpoint/presentation/pages/all_specialties_page.dart';
 import 'package:doctorpoint/presentation/pages/search_page.dart';
 import 'package:doctorpoint/presentation/pages/appointments_page.dart';
-import 'firebase_options.dart';
+import 'package:doctorpoint/presentation/pages/onboarding_page.dart';
+import 'package:doctorpoint/presentation/pages/setup_profile_page.dart';
 
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Initialiser le formatage des dates en français
   await initializeDateFormatting('fr_FR');
-  
+
   runApp(const MyApp());
 }
 
@@ -36,6 +41,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()), // Ajouté
         ChangeNotifierProvider(create: (_) => DoctorProvider()),
         ChangeNotifierProvider(create: (_) => SpecialtyProvider()),
       ],
@@ -43,17 +49,25 @@ class MyApp extends StatelessWidget {
         title: 'DoctorPoint',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
-        home: const HomeScreen(),
+        home: const Root(), // Changé pour Root
         routes: {
-          '/home': (context) => const HomeScreen(),
+          '/home': (context) => const HomePage(userName: '',),
           '/doctor-detail': (context) {
-            final doctor = ModalRoute.of(context)!.settings.arguments as Doctor?;
+            final doctor =
+                ModalRoute.of(context)!.settings.arguments as Doctor?;
             return DoctorDetailPage(doctor: doctor!);
           },
           '/all-doctors': (context) => const AllDoctorsPage(),
           '/all-specialties': (context) => const AllSpecialtiesPage(),
           '/search': (context) => const SearchPage(),
           '/appointments': (context) => const AppointmentsPage(),
+          // Routes d'authentification
+          '/onboarding': (context) => const OnboardingScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/setup-profile': (context) {
+            final uid = ModalRoute.of(context)!.settings.arguments as String?;
+            return SetupProfileScreen(uid: uid ?? '');
+          },
         },
         // Localizations config
         localizationsDelegates: const [
@@ -71,113 +85,56 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+// Nouvelle classe Root pour gérer l'authentification
+class Root extends StatefulWidget {
+  const Root({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<Root> createState() => _RootState();
 }
 
-
-
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
-  // Liste des pages
-  final List<Widget> _pages = [
-    const HomePage(),
-    const AppointmentsPage(), // Ajouté
-    Container(color: Colors.white, child: const Center(child: Text('Messages'))),
-    Container(color: Colors.white, child: const Center(child: Text('Profil'))),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
+class _RootState extends State<Root> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialiser l'authentification
+    Future.microtask(() {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      authProvider.initialize();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // Afficher un écran de chargement pendant l'initialisation
+        if (authProvider.isLoading) {
+          return const SplashScreen();
+        }
 
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: AppTheme.greyColor,
-        selectedLabelStyle: TextStyle(
-          fontSize: isSmallScreen ? 10 : 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: isSmallScreen ? 10 : 12,
-        ),
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        elevation: 8,
-        iconSize: isSmallScreen ? 20 : 24,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.home_outlined,
-              size: isSmallScreen ? 20 : 24,
-            ),
-            activeIcon: Icon(
-              Icons.home,
-              size: isSmallScreen ? 20 : 24,
-            ),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.calendar_today_outlined,
-              size: isSmallScreen ? 20 : 24,
-            ),
-            activeIcon: Icon(
-              Icons.calendar_today,
-              size: isSmallScreen ? 20 : 24,
-            ),
-            label: 'Rendez-vous',
-          ),
-          BottomNavigationBarItem(
-            icon: Badge(
-              label: const Text('3'),
-              backgroundColor: Colors.red,
-              child: Icon(
-                Icons.chat_bubble_outline,
-                size: isSmallScreen ? 20 : 24,
-              ),
-            ),
-            activeIcon: Badge(
-              label: const Text('3'),
-              backgroundColor: Colors.red,
-              child: Icon(
-                Icons.chat_bubble,
-                size: isSmallScreen ? 20 : 24,
-              ),
-            ),
-            label: 'Messages',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.person_outline,
-              size: isSmallScreen ? 20 : 24,
-            ),
-            activeIcon: Icon(
-              Icons.person,
-              size: isSmallScreen ? 20 : 24,
-            ),
-            label: 'Profil',
-          ),
-        ],
-        onTap: _onItemTapped,
-      ),
+        // Rediriger vers l'écran approprié selon l'état d'authentification
+        if (authProvider.user == null) {
+          // Pas d'utilisateur connecté
+          if (authProvider.isFirstLaunch) {
+            return const OnboardingScreen();
+          } else {
+            return const LoginScreen();
+          }
+        } else {
+          // Utilisateur connecté
+          if (authProvider.userProfile == null ||
+              authProvider.userProfile!.isProfileIncomplete) {
+            // Profil incomplet, rediriger vers la configuration
+            return SetupProfileScreen(uid: authProvider.user!.uid);
+          } else {
+            // Profil complet, aller à l'accueil
+            return const HomePage(userName: '',);
+          }
+        }
+      },
     );
   }
+
+  
 }

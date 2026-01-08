@@ -18,7 +18,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   final PageController _pageController = PageController();
 
   final List<Widget> _pages = [
-    const HomePage(),
+    const HomePage(userName: '',),
     const AppointmentsPage(),
 
   ];

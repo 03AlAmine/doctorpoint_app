@@ -1,4 +1,4 @@
-
+import 'package:doctorpoint/core/providers/auth_provider.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/presentation/pages/search_page.dart';
 import 'package:doctorpoint/presentation/widgets/doctor_card.dart';
@@ -12,15 +12,19 @@ import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:doctorpoint/presentation/pages/doctor_detail_page.dart';
 import 'package:doctorpoint/presentation/pages/all_doctors_page.dart';
 import 'package:doctorpoint/presentation/pages/all_specialties_page.dart';
+import 'package:doctorpoint/presentation/pages/appointments_page.dart'; // AJOUTÉ
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String userName;
+
+  const HomePage({super.key, required this.userName}); // MODIFIÉ
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0; // AJOUTÉ
   final List<Map<String, dynamic>> _promotions = [
     {
       'title': 'Consultation gratuite\npour la première visite',
@@ -38,8 +42,38 @@ class _HomePageState extends State<HomePage> {
 
   int _currentPromotion = 0;
 
+  // Liste des pages pour la navigation AJOUTÉ
+  final List<Widget> _pages = [
+    Container(), // Placeholder - sera rempli par le contenu HomePage
+    const AppointmentsPage(),
+    Container(
+      color: Colors.white,
+      child: const Center(child: Text('Messages - Page à créer')),
+    ),
+    Container(
+      color: Colors.white,
+      child: const Center(child: Text('Profil - Page à créer')),
+    ),
+  ];
+
+  // Fonction pour changer d'onglet AJOUTÉ
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Si l'index sélectionné n'est pas 0 (Accueil), on affiche la page correspondante
+    if (_selectedIndex != 0) {
+      return Scaffold(
+        body: _pages[_selectedIndex],
+        bottomNavigationBar: _buildBottomNavigationBar(),
+      );
+    }
+
+    // Si c'est l'index 0 (Accueil), on affiche le contenu original
     final doctorProvider = Provider.of<DoctorProvider>(context);
     final specialtyProvider = Provider.of<SpecialtyProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
@@ -97,167 +131,245 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      // SUPPRIMER la bottomNavigationBar
+      bottomNavigationBar: _buildBottomNavigationBar(), // AJOUTÉ
     );
   }
+
+  // Fonction pour construire la navigation en bas AJOUTÉ
+  Widget _buildBottomNavigationBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      selectedItemColor: AppTheme.primaryColor,
+      unselectedItemColor: AppTheme.greyColor,
+      selectedLabelStyle: TextStyle(
+        fontSize: isSmallScreen ? 10 : 12,
+        fontWeight: FontWeight.w600,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontSize: isSmallScreen ? 10 : 12,
+      ),
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
+      elevation: 8,
+      iconSize: isSmallScreen ? 20 : 24,
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(
+            Icons.home_outlined,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          activeIcon: Icon(
+            Icons.home,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          label: 'Accueil',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(
+            Icons.calendar_today_outlined,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          activeIcon: Icon(
+            Icons.calendar_today,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          label: 'Rendez-vous',
+        ),
+        BottomNavigationBarItem(
+          icon: Badge(
+            label: const Text('3'),
+            backgroundColor: Colors.red,
+            child: Icon(
+              Icons.chat_bubble_outline,
+              size: isSmallScreen ? 20 : 24,
+            ),
+          ),
+          activeIcon: Badge(
+            label: const Text('3'),
+            backgroundColor: Colors.red,
+            child: Icon(
+              Icons.chat_bubble,
+              size: isSmallScreen ? 20 : 24,
+            ),
+          ),
+          label: 'Messages',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(
+            Icons.person_outline,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          activeIcon: Icon(
+            Icons.person,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          label: 'Profil',
+        ),
+      ],
+      onTap: _onItemTapped,
+    );
+  }
+
+  // TON CODE EXISTANT POUR LES AUTRES FONCTIONS...
+  // NE CHANGE PAS LES FONCTIONS SUIVANTES :
 
   Widget _buildHeader(BuildContext context, double screenWidth) {
     final isSmallScreen = screenWidth < 360;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final userProfile = authProvider.userProfile;
+        final userName = userProfile?.fullName.isNotEmpty == true
+            ? userProfile!.fullName.split(' ').first
+            : widget.userName; // MODIFIÉ
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo de profil utilisateur
-            Container(
-              width: isSmallScreen ? 42 : 48,
-              height: isSmallScreen ? 42 : 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.primaryColor.withOpacity(0.1),
-              ),
-              child: ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: AppTheme.lightGrey,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.primaryColor),
+            Row(
+              children: [
+                // Photo de profil utilisateur
+                Container(
+                  width: isSmallScreen ? 42 : 48,
+                  height: isSmallScreen ? 42 : 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                  ),
+                  child: ClipOval(
+                    child: Icon(
+                      Icons.person,
+                      color: AppTheme.primaryColor,
+                      size: isSmallScreen ? 20 : 24,
+                    ),
+                  ),
+                ),
+                SizedBox(width: isSmallScreen ? 8 : 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bonjour, $userName',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 16 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Comment allez-vous aujourd\'hui ?',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: AppTheme.greyColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                badges.Badge(
+                  position: badges.BadgePosition.topEnd(top: -5, end: -5),
+                  badgeContent: Text(
+                    '3',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 8 : 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  badgeStyle: badges.BadgeStyle(
+                    badgeColor: Colors.red,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 4 : 5,
+                      vertical: isSmallScreen ? 1 : 2,
+                    ),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.notifications_outlined,
+                      size: isSmallScreen ? 22 : 24,
+                    ),
+                    color: AppTheme.textColor,
+                    onPressed: () {
+                      // Naviguer vers les notifications
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(
+                      minWidth: isSmallScreen ? 36 : 40,
+                      minHeight: isSmallScreen ? 36 : 40,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: screenWidth * 0.04),
+            // Barre de recherche
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SearchPage(),
+                  ),
+                );
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                  vertical: isSmallScreen ? 10 : 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                  border: Border.all(color: AppTheme.lightGrey),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search,
+                      color: AppTheme.greyColor,
+                      size: isSmallScreen ? 18 : 20,
+                    ),
+                    SizedBox(width: isSmallScreen ? 8 : 12),
+                    Expanded(
+                      child: Text(
+                        'Rechercher un médecin, une spécialité...',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 14,
+                          color: AppTheme.greyColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Icon(
-                    Icons.person,
-                    color: AppTheme.primaryColor,
-                    size: isSmallScreen ? 20 : 24,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: isSmallScreen ? 8 : 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Bonjour, John',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'Comment allez-vous aujourd\'hui ?',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 12 : 14,
+                    Icon(
+                      Icons.tune,
                       color: AppTheme.greyColor,
+                      size: isSmallScreen ? 18 : 20,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            badges.Badge(
-              position: badges.BadgePosition.topEnd(top: -5, end: -5),
-              badgeContent: Text(
-                '3',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 8 : 10,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              badgeStyle: badges.BadgeStyle(
-                badgeColor: Colors.red,
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 4 : 5,
-                  vertical: isSmallScreen ? 1 : 2,
-                ),
-              ),
-              child: IconButton(
-                icon: Icon(
-                  Icons.notifications_outlined,
-                  size: isSmallScreen ? 22 : 24,
-                ),
-                color: AppTheme.textColor,
-                onPressed: () {
-                  // Naviguer vers les notifications
-                },
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(
-                  minWidth: isSmallScreen ? 36 : 40,
-                  minHeight: isSmallScreen ? 36 : 40,
+                  ],
                 ),
               ),
             ),
           ],
-        ),
-        SizedBox(height: screenWidth * 0.04),
-        // Barre de recherche
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SearchPage(),
-              ),
-            );
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 12 : 16,
-              vertical: isSmallScreen ? 10 : 12,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-              border: Border.all(color: AppTheme.lightGrey),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.search,
-                  color: AppTheme.greyColor,
-                  size: isSmallScreen ? 18 : 20,
-                ),
-                SizedBox(width: isSmallScreen ? 8 : 12),
-                Expanded(
-                  child: Text(
-                    'Rechercher un médecin, une spécialité...',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 13 : 14,
-                      color: AppTheme.greyColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(
-                  Icons.tune,
-                  color: AppTheme.greyColor,
-                  size: isSmallScreen ? 18 : 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -553,8 +665,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildPopularDoctors(
       DoctorProvider doctorProvider, double screenWidth) {
     final isSmallScreen = screenWidth < 360;
-    final cardHeight = isSmallScreen ? 200.0 : 240.0; // Réduit la hauteur
-    final cardWidth = isSmallScreen ? 180.0 : 220.0; // Réduit la largeur
+    final cardWidth = isSmallScreen ? 180.0 : 220.0;
+    final cardHeight = isSmallScreen ? 180.0 : 220.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,7 +743,7 @@ class _HomePageState extends State<HomePage> {
           )
         else
           SizedBox(
-            height: cardHeight, // Hauteur fixe pour le conteneur
+            height: cardHeight,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -661,7 +773,7 @@ class _HomePageState extends State<HomePage> {
                     onFavoriteTap: () {
                       doctorProvider.toggleFavorite(doctor.id);
                     },
-                    isCompact: isSmallScreen, // Conserver uniquement celui-ci
+                    isCompact: isSmallScreen,
                   ),
                 );
               },
@@ -1074,6 +1186,4 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
-
-  // SUPPRIMER la fonction _buildBottomNavigationBar
 }

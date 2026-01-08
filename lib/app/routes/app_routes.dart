@@ -26,7 +26,7 @@ class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case home:
-        return MaterialPageRoute(builder: (_) => const HomePage());
+        return MaterialPageRoute(builder: (_) => const HomePage(userName: '',));
       
       case appointments:
         return MaterialPageRoute(builder: (_) => const AppointmentsPage());
