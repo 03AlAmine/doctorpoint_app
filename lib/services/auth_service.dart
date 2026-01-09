@@ -2,7 +2,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:doctorpoint/data/models/app_user.dart';
-import 'package:doctorpoint/data/models/doctor_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;

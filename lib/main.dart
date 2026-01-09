@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:doctorpoint/presentation/pages/admin/admin_doctor_requests.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -109,6 +110,8 @@ class MyApp extends StatelessWidget {
           '/admin': (context) => const AdminDashboard(),
           '/admin/doctors': (context) => const AdminDoctorsPage(),
           '/admin/doctor-form': (context) => const AdminDoctorForm(),
+          '/admin/doctor-requests': (context) =>
+              const AdminDoctorRequestsPage(), // AJOUTEZ CETTE LIGNE
           '/doctor-dashboard': (context) {
             final doctor =
                 ModalRoute.of(context)!.settings.arguments as Doctor?;

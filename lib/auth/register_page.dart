@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:doctorpoint/auth/complete_profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:doctorpoint/services/auth_service.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
 
 enum RegistrationType { patient, doctor }
@@ -24,10 +23,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final _phoneController = TextEditingController();
   final _specializationController = TextEditingController();
   final _licenseController = TextEditingController();
-  
-  final AuthService _authService = AuthService();
+
   RegistrationType _type = RegistrationType.patient;
-  
+
   bool _isLoading = false;
   bool _showPassword = false;
   bool _showConfirmPassword = false;
@@ -58,9 +56,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     color: AppTheme.primaryColor,
                   ),
                 ),
-                
+
                 const SizedBox(height: 30),
-                
+
                 // Titre
                 const Text(
                   'Créer un compte',
@@ -70,9 +68,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     color: Colors.white,
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 const Text(
                   'Rejoignez DoctorPoint',
                   style: TextStyle(
@@ -80,9 +78,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     color: Colors.white70,
                   ),
                 ),
-                
+
                 const SizedBox(height: 40),
-                
+
                 // Formulaire
                 Container(
                   padding: const EdgeInsets.all(30),
@@ -114,7 +112,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.error, color: Colors.red.shade700, size: 20),
+                                Icon(Icons.error,
+                                    color: Colors.red.shade700, size: 20),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
@@ -128,7 +127,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ],
                             ),
                           ),
-                        
+
                         // Sélecteur de type
                         Card(
                           child: Padding(
@@ -147,21 +146,22 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                               ],
                               selected: {_type},
-                              onSelectionChanged: (Set<RegistrationType> newSelection) {
+                              onSelectionChanged:
+                                  (Set<RegistrationType> newSelection) {
                                 setState(() => _type = newSelection.first);
                               },
                             ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // Nom
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
-                            labelText: _type == RegistrationType.patient 
-                                ? 'Nom complet *' 
+                            labelText: _type == RegistrationType.patient
+                                ? 'Nom complet *'
                                 : 'Dr. Nom Prénom *',
                             prefixIcon: const Icon(Icons.person),
                             border: OutlineInputBorder(
@@ -177,9 +177,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Email
                         TextFormField(
                           controller: _emailController,
@@ -203,9 +203,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Téléphone
                         TextFormField(
                           controller: _phoneController,
@@ -226,11 +226,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        
+
                         // Champs spécifiques médecin
                         if (_type == RegistrationType.doctor) ...[
                           const SizedBox(height: 16),
-                          
                           TextFormField(
                             controller: _specializationController,
                             decoration: InputDecoration(
@@ -249,9 +248,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
-                          
                           const SizedBox(height: 16),
-                          
                           TextFormField(
                             controller: _licenseController,
                             decoration: InputDecoration(
@@ -271,9 +268,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             },
                           ),
                         ],
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Mot de passe
                         TextFormField(
                           controller: _passwordController,
@@ -283,7 +280,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _showPassword ? Icons.visibility : Icons.visibility_off,
+                                _showPassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -307,9 +306,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Confirmation mot de passe
                         TextFormField(
                           controller: _confirmPasswordController,
@@ -319,7 +318,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _showConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                                _showConfirmPassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -343,9 +344,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
+
                         // Information pour les médecins
                         if (_type == RegistrationType.doctor)
                           Container(
@@ -377,7 +378,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ],
                             ),
                           ),
-                        
+
                         // Bouton d'inscription
                         SizedBox(
                           width: double.infinity,
@@ -405,9 +406,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // Lien vers la connexion
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -421,7 +422,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             TextButton(
                               onPressed: () {
-                                Navigator.pushReplacementNamed(context, '/login');
+                                Navigator.pushReplacementNamed(
+                                    context, '/login');
                               },
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
@@ -451,103 +453,147 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
 // Dans votre méthode _register() pour les patients
-Future<void> _register() async {
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() => _isLoading = true);
-
-  try {
-    // Créer l'utilisateur Firebase Auth
-    final userCredential = await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-
-    // Créer le document utilisateur dans Firestore
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userCredential.user!.uid)
-        .set({
-      'uid': userCredential.user!.uid,
-      'email': _emailController.text.trim(),
-      'fullName': _nameController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'role': 'patient',
-      'profileCompleted': false, // IMPORTANT: Profil incomplet
-      'emailVerified': false,
-      'createdAt': FieldValue.serverTimestamp(),
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
     });
 
-    // Créer aussi dans la collection patients (avec profil incomplet)
-    await FirebaseFirestore.instance
-        .collection('patients')
-        .doc(userCredential.user!.uid)
-        .set({
-      'uid': userCredential.user!.uid,
-      'email': _emailController.text.trim(),
-      'fullName': _nameController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'role': 'patient',
-      'profileCompleted': false, // À compléter plus tard
-      'emailVerified': false,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      if (_type == RegistrationType.patient) {
+        // Créer l'utilisateur Firebase Auth pour patient
+        final userCredential =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
-    // Envoyer l'email de vérification
-    await userCredential.user!.sendEmailVerification();
+        final userId = userCredential.user!.uid;
+        final email = _emailController.text.trim();
+        final fullName = _nameController.text.trim();
+        final phone = _phoneController.text.trim();
 
-    // Rediriger vers la page de complétion du profil
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CompleteProfilePage(
-            userId: userCredential.user!.uid,
-            email: _emailController.text.trim(),
-          ),
-        ),
-      );
+        // Créer le document utilisateur dans Firestore
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'uid': userId,
+          'email': email,
+          'fullName': fullName,
+          'phone': phone,
+          'role': 'patient',
+          'profileCompleted': false,
+          'emailVerified': false,
+          'hasSkippedProfile': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // Créer aussi dans la collection patients
+        await FirebaseFirestore.instance
+            .collection('patients')
+            .doc(userId)
+            .set({
+          'uid': userId,
+          'email': email,
+          'fullName': fullName,
+          'phone': phone,
+          'role': 'patient',
+          'profileCompleted': false,
+          'emailVerified': false,
+          'hasSkippedProfile': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // Envoyer l'email de vérification
+        await userCredential.user!.sendEmailVerification();
+
+        // Rediriger vers la page de complétion du profil
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CompleteProfilePage(
+                userId: userId,
+                email: email,
+              ),
+            ),
+          );
+        }
+      } else if (_type == RegistrationType.doctor) {
+        // Pour les médecins, créer une demande d'inscription
+        await _registerDoctorRequest();
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _errorMessage = _handleAuthError(e));
+    } catch (e) {
+      setState(() => _errorMessage = 'Erreur: ${e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-  } catch (e) {
-    setState(() => _errorMessage = e.toString());
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
 
   Future<void> _registerDoctorRequest() async {
-    // Enregistrer la demande dans une collection séparée
+    // NE PAS créer l'utilisateur Firebase Auth immédiatement
+    // Juste enregistrer la demande dans doctor_requests
     final requestData = {
       'name': _nameController.text.trim(),
       'email': _emailController.text.trim(),
       'phone': _phoneController.text.trim(),
       'specialization': _specializationController.text.trim(),
       'licenseNumber': _licenseController.text.trim(),
-      'status': 'pending',
-      'createdAt': DateTime.now(),
-      'password': _passwordController.text, // Temporaire, à supprimer après traitement
+      'status': 'pending', // pending, approved, rejected
+      'requestDate': FieldValue.serverTimestamp(),
+      'password':
+          _passwordController.text, // À garder pour créer le compte plus tard
+      'additionalInfo': {
+        'requestType': 'doctor_registration',
+        'source': 'app_registration',
+      },
     };
-    
-    await FirebaseFirestore.instance
-        .collection('doctor_requests')
-        .add(requestData);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Demande envoyée ! L\'administration vous contactera pour finaliser votre inscription.',
+
+    try {
+      // Enregistrer la demande dans doctor_requests
+      await FirebaseFirestore.instance
+          .collection('doctor_requests')
+          .add(requestData);
+
+      // Afficher un message de succès
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Demande d\'inscription envoyée ! L\'administration vous contactera pour finaliser votre inscription.',
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
           ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 5),
-        ),
-      );
-      
-      await Future.delayed(const Duration(milliseconds: 1500));
-      Navigator.pushReplacementNamed(context, '/login');
+        );
+
+        // Revenir à la page de connexion
+        await Future.delayed(const Duration(milliseconds: 1500));
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      setState(
+          () => _errorMessage = 'Erreur lors de l\'envoi de la demande: $e');
+    }
+  }
+
+  String _handleAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return 'Un compte existe déjà avec cet email';
+      case 'invalid-email':
+        return 'Adresse email invalide';
+      case 'weak-password':
+        return 'Le mot de passe est trop faible';
+      case 'operation-not-allowed':
+        return 'L\'inscription par email est désactivée';
+      default:
+        return 'Erreur d\'inscription: ${e.message}';
     }
   }
 

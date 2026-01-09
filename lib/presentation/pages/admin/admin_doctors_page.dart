@@ -18,6 +18,16 @@ class _AdminDoctorsPageState extends State<AdminDoctorsPage> {
   String _selectedSpecialty = 'All';
 
   @override
+  void initState() {
+    super.initState();
+    // Initialiser le provider si nécessaire
+    final doctorProvider = Provider.of<DoctorProvider>(context, listen: false);
+    if (doctorProvider.doctors.isEmpty) {
+      doctorProvider.loadDoctors();
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -76,6 +86,9 @@ class _AdminDoctorsPageState extends State<AdminDoctorsPage> {
   }
 
   Widget _buildSearchBar(List<String> specialties) {
+    // Ajoutez 'All' au début de la liste des spécialités
+    final allSpecialties = ['All', ...specialties];
+    
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.white,
@@ -127,7 +140,7 @@ class _AdminDoctorsPageState extends State<AdminDoctorsPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  items: specialties.map((specialty) {
+                  items: allSpecialties.map((specialty) {
                     return DropdownMenuItem(
                       value: specialty,
                       child: Text(specialty),

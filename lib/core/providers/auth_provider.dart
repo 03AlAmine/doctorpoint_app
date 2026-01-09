@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
-  
+
   AppUser? _currentUser;
   UserModel? _userProfile;
   bool _isLoading = true;
@@ -27,20 +27,19 @@ class AuthProvider extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       final firebaseUser = FirebaseAuth.instance.currentUser;
-      
+
       if (firebaseUser != null) {
         _currentUser = await _authService.getCurrentUser();
-        
+
         // Charger le profil si patient
         if (_currentUser?.isPatient ?? false) {
           // Charger le profil utilisateur
         }
       }
-      
+
       // Vérifier si premier lancement
       final prefs = await SharedPreferences.getInstance();
       _isFirstLaunch = prefs.getBool('first_launch') ?? true;
-      
     } catch (e) {
       print('Erreur initialisation auth: $e');
     } finally {
@@ -57,7 +56,7 @@ class AuthProvider extends ChangeNotifier {
 
       final user = await _authService.signIn(email, password);
       _currentUser = user;
-      
+
       // Marquer comme pas premier lancement
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('first_launch', false);
@@ -89,7 +88,7 @@ class AuthProvider extends ChangeNotifier {
         fullName: fullName,
         phone: phone,
       );
-      
+
       _currentUser = user;
 
       // Marquer comme pas premier lancement
@@ -109,12 +108,21 @@ class AuthProvider extends ChangeNotifier {
   // Déconnexion
   Future<void> signOut() async {
     try {
+      print('🔄 AuthProvider signOut() appelé');
+
+      // Appeler AuthService pour la déconnexion Firebase
       await _authService.signOut();
+
+      // Réinitialiser l'état local
       _currentUser = null;
       _userProfile = null;
-      notifyListeners();
+
+      print('✅ AuthProvider signOut() terminé avec succès');
     } catch (e) {
+      print('❌ Erreur AuthProvider signOut(): $e');
       rethrow;
+    } finally {
+      notifyListeners();
     }
   }
 
