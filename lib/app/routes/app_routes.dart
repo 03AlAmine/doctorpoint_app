@@ -27,6 +27,7 @@ import 'package:doctorpoint/presentation/pages/admin/admin_dashboard.dart';
 import 'package:doctorpoint/presentation/pages/admin/admin_doctors_page.dart';
 import 'package:doctorpoint/presentation/pages/admin/admin_doctor_form.dart';
 import 'package:doctorpoint/presentation/pages/admin/admin_doctor_requests.dart';
+import 'package:doctorpoint/presentation/pages/admin/admin_patients_page.dart'; // NOUVEAU
 
 // Models
 import 'package:doctorpoint/data/models/doctor_model.dart';
@@ -34,7 +35,7 @@ import 'package:doctorpoint/data/models/doctor_model.dart';
 class AppRoutes {
   static Map<String, WidgetBuilder> getRoutes() {
     return {
-      '/': (context) => const LoginPage(), // Modifier selon votre logique d'accueil
+      '/': (context) => const LoginPage(),
       '/login': (context) => const LoginPage(),
       '/register': (context) => const RegisterPage(),
       '/complete-profile': (context) {
@@ -55,23 +56,33 @@ class AppRoutes {
       '/search': (context) => const SearchPage(),
       '/appointments': (context) => const AppointmentsPage(),
       '/onboarding': (context) => const OnboardingScreen(),
+      
+      // Routes Admin
       '/admin': (context) => const AdminDashboard(),
       '/admin/doctors': (context) => const AdminDoctorsPage(),
       '/admin/doctor-form': (context) => const AdminDoctorForm(),
       '/admin/doctor-requests': (context) => const AdminDoctorRequestsPage(),
+      '/admin/patients': (context) => const AdminPatientsPage(), // NOUVEAU
+      
+      // Routes Doctor
       '/doctor-dashboard': (context) {
         final doctor = ModalRoute.of(context)!.settings.arguments as Doctor?;
         return DoctorDashboard(doctor: doctor!);
       },
+      
+      // Routes Patient
       '/patient-profile': (context) => const PatientProfilePage(),
+      
       '/doctor-documents': (context) {
         final doctorId = ModalRoute.of(context)!.settings.arguments as String;
         return DoctorDocumentsPage(doctorId: doctorId);
       },
+      
       '/complete-doctor-profile': (context) {
         final doctorId = ModalRoute.of(context)!.settings.arguments as String;
         return CompleteDoctorProfilePage(doctorId: doctorId);
       },
+      
       '/splash': (context) => const SplashScreen(),
     };
   }

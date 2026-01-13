@@ -1,5 +1,6 @@
 // lib/main.dart - Code complet corrigé
 import 'package:doctorpoint/app/routes/app_routes.dart';
+import 'package:doctorpoint/core/theme/app_scroll_behavior.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -70,6 +71,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'DoctorPoint',
         theme: AppTheme.lightTheme,
+        scrollBehavior: const AppScrollBehavior(),
         debugShowCheckedModeBanner: false,
         initialRoute: '/',
         onGenerateRoute: AppRoutes.generateRoute,
