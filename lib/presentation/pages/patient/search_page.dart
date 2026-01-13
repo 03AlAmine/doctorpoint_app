@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:doctorpoint/core/providers/doctor_provider.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
-import 'package:doctorpoint/presentation/pages/doctor_detail_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/doctor_detail_page.dart';
 import 'package:doctorpoint/presentation/widgets/doctor_card.dart';
 
 class SearchPage extends StatefulWidget {

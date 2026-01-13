@@ -1,8 +1,8 @@
 
 import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:doctorpoint/presentation/pages/home_page.dart';
-import 'package:doctorpoint/presentation/pages/appointments_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/home_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/appointments_page.dart';
 
 import 'package:badges/badges.dart' as badges;
 

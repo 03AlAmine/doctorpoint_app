@@ -22,11 +22,15 @@ class Doctor {
   final List<String>? education;
   final List<String>? certifications;
   final DateTime? createdAt;
-  final String? password; // AJOUTEZ CE CHAMP
-  final bool? hasAccount; // Pour savoir si le médecin a un compte
-  final String? accountStatus; // pending, active, inactive
+  final String? password;
+  final bool? hasAccount;
+  final String? accountStatus;
   final DateTime? lastLogin;
-  final List<String>? roles; // ['doctor', 'admin'] etc.
+  final List<String>? roles;
+  final Map<String, dynamic>? roleData;
+  final String? licenseNumber;
+  final Map<String, dynamic>? verification;
+  final Map<String, dynamic>? documents;
 
   Doctor({
     required this.id,
@@ -47,18 +51,30 @@ class Doctor {
     this.location,
     this.phoneNumber,
     this.email,
-    this.password, // AJOUTEZ
-    this.hasAccount = false, // AJOUTEZ
-    this.accountStatus = 'pending', // AJOUTEZ
-    this.lastLogin, // AJOUTEZ
-    this.roles = const ['doctor'], // AJOUTEZ
+    this.password,
+    this.hasAccount = false,
+    this.accountStatus = 'pending',
+    this.lastLogin,
+    this.roles = const ['doctor'],
+    this.roleData,
+    this.licenseNumber,
     this.education,
     this.certifications,
     this.createdAt,
+    this.verification,
+    this.documents,
   });
 
   factory Doctor.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // Extraire licenseNumber de roleData
+    String? licenseNumber;
+    if (data['roleData'] != null && data['roleData'] is Map) {
+      final roleData = data['roleData'] as Map<String, dynamic>;
+      licenseNumber = roleData['licenseNumber']?.toString();
+    }
+
     return Doctor(
       id: doc.id,
       name: data['name'] ?? '',
@@ -80,11 +96,15 @@ class Doctor {
       location: data['location'],
       phoneNumber: data['phoneNumber'],
       email: data['email'],
-      password: data['password'], // AJOUTEZ
-      hasAccount: data['hasAccount'] ?? false, // AJOUTEZ
-      accountStatus: data['accountStatus'] ?? 'pending', // AJOUTEZ
-      lastLogin: data['lastLogin']?.toDate(), // AJOUTEZ
-      roles: List<String>.from(data['roles'] ?? ['doctor']), // AJOUTEZ
+      password: data['password'],
+      hasAccount: data['hasAccount'] ?? false,
+      accountStatus: data['accountStatus'] ?? 'pending',
+      lastLogin: data['lastLogin']?.toDate(),
+      roles: List<String>.from(data['roles'] ?? ['doctor']),
+      roleData: data['roleData'] != null
+          ? Map<String, dynamic>.from(data['roleData'])
+          : null,
+      licenseNumber: licenseNumber ?? data['licenseNumber'],
       education: data['education'] != null
           ? List<String>.from(data['education'])
           : null,
@@ -92,6 +112,12 @@ class Doctor {
           ? List<String>.from(data['certifications'])
           : null,
       createdAt: data['createdAt']?.toDate(),
+      verification: data['verification'] != null
+          ? Map<String, dynamic>.from(data['verification'])
+          : null,
+      documents: data['documents'] != null
+          ? Map<String, dynamic>.from(data['documents'])
+          : null,
     );
   }
 
@@ -107,11 +133,15 @@ class Doctor {
       'isFavorite': isFavorite,
       'consultationFee': consultationFee,
       'languages': languages,
-      'hasAccount': hasAccount ?? false, // AJOUTEZ
-      'accountStatus': accountStatus ?? 'pending', // AJOUTEZ
-      'roles': roles ?? ['doctor'], // AJOUTEZ
+      'hasAccount': hasAccount ?? false,
+      'accountStatus': accountStatus ?? 'pending',
+      'roles': roles ?? ['doctor'],
       'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
+
+    if (verification != null) map['verification'] = verification;
+    if (documents != null) map['documents'] = documents;
 
     // Champs optionnels
     if (specialtyIcon != null) map['specialtyIcon'] = specialtyIcon;
@@ -121,12 +151,79 @@ class Doctor {
     if (location != null) map['location'] = location;
     if (phoneNumber != null) map['phoneNumber'] = phoneNumber;
     if (email != null) map['email'] = email;
-    if (password != null) map['password'] = password; // AJOUTEZ
-    if (hasAccount != null) map['hasAccount'] = hasAccount;
+    if (password != null) map['password'] = password;
     if (lastLogin != null) map['lastLogin'] = Timestamp.fromDate(lastLogin!);
     if (education != null) map['education'] = education;
     if (certifications != null) map['certifications'] = certifications;
-    
+    if (licenseNumber != null) map['licenseNumber'] = licenseNumber;
+    if (roleData != null) map['roleData'] = roleData;
+
     return map;
+  }
+
+  Doctor copyWith({
+    String? id,
+    String? name,
+    String? specialization,
+    String? specialtyIcon,
+    double? rating,
+    int? reviews,
+    int? experience,
+    String? hospital,
+    String? department,
+    String? imageUrl,
+    bool? isFavorite,
+    double? consultationFee,
+    List<String>? languages,
+    String? description,
+    Map<String, dynamic>? availability,
+    GeoPoint? location,
+    String? phoneNumber,
+    String? email,
+    String? password,
+    bool? hasAccount,
+    String? accountStatus,
+    DateTime? lastLogin,
+    List<String>? roles,
+    Map<String, dynamic>? roleData,
+    String? licenseNumber,
+    List<String>? education,
+    List<String>? certifications,
+    DateTime? createdAt,
+    Map<String, dynamic>? verification,
+    Map<String, dynamic>? documents,
+  }) {
+    return Doctor(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      specialization: specialization ?? this.specialization,
+      specialtyIcon: specialtyIcon ?? this.specialtyIcon,
+      rating: rating ?? this.rating,
+      reviews: reviews ?? this.reviews,
+      experience: experience ?? this.experience,
+      hospital: hospital ?? this.hospital,
+      department: department ?? this.department,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isFavorite: isFavorite ?? this.isFavorite,
+      consultationFee: consultationFee ?? this.consultationFee,
+      languages: languages ?? this.languages,
+      description: description ?? this.description,
+      availability: availability ?? this.availability,
+      location: location ?? this.location,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      hasAccount: hasAccount ?? this.hasAccount,
+      accountStatus: accountStatus ?? this.accountStatus,
+      lastLogin: lastLogin ?? this.lastLogin,
+      roles: roles ?? this.roles,
+      roleData: roleData ?? this.roleData,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      education: education ?? this.education,
+      certifications: certifications ?? this.certifications,
+      createdAt: createdAt ?? this.createdAt,
+      verification: verification ?? this.verification,
+      documents: documents ?? this.documents,
+    );
   }
 }

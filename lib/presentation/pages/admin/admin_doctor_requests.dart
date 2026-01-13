@@ -1,4 +1,3 @@
-// lib/presentation/pages/admin/admin_doctor_requests.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,29 +9,17 @@ class AdminDoctorRequestsPage extends StatefulWidget {
   const AdminDoctorRequestsPage({super.key});
 
   @override
-  State<AdminDoctorRequestsPage> createState() => _AdminDoctorRequestsPageState();
+  State<AdminDoctorRequestsPage> createState() =>
+      _AdminDoctorRequestsPageState();
 }
 
 class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
-  
-  String _filterStatus = 'pending'; // pending, approved, rejected
-  bool _isLoading = false;
-  bool _initialized = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    // Initialisation dans initState au lieu de build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _initialized = true;
-        });
-      }
-    });
-  }
+  String _filterStatus = 'pending';
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +27,15 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
       appBar: AppBar(
         title: const Text('Demandes des Médecins'),
         backgroundColor: AppTheme.primaryColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              Navigator.pushNamed(context, '/admin/doctor-form');
+            },
+            tooltip: 'Créer un médecin manuellement',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -47,7 +43,7 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
               children: [
                 // Filtres
                 _buildFilterBar(),
-                
+
                 // Liste des demandes
                 Expanded(
                   child: _buildRequestsList(),
@@ -116,17 +112,10 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
     );
   }
 
-  void _changeFilter(String newStatus) {
-    if (!mounted) return;
-    
-    setState(() {
-      _filterStatus = newStatus;
-    });
-  }
-
   Widget _buildRequestsList() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _db.collection('doctor_requests')
+      stream: _db
+          .collection('doctor_requests')
           .where('status', isEqualTo: _filterStatus)
           .orderBy('requestDate', descending: true)
           .snapshots(),
@@ -199,228 +188,386 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // En-tête
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        data['name'] ?? 'Nom non renseigné',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        data['specialization'] ?? 'Spécialité non renseignée',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Chip(
-                  label: Text(
-                    status == 'pending'
-                        ? 'En attente'
-                        : status == 'approved'
-                            ? 'Approuvé'
-                            : 'Rejeté',
-                  ),
-                  backgroundColor: status == 'pending'
-                      ? Colors.orange.shade100
-                      : status == 'approved'
-                          ? Colors.green.shade100
-                          : Colors.red.shade100,
-                  labelStyle: TextStyle(
-                    color: status == 'pending'
-                        ? Colors.orange.shade800
-                        : status == 'approved'
-                            ? Colors.green.shade800
-                            : Colors.red.shade800,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-            
-            // Informations
-            Row(
-              children: [
-                Icon(Icons.email, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    data['email'] ?? 'Email non renseigné',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 8),
-            
-            Row(
-              children: [
-                Icon(Icons.phone, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Text(
-                  data['phone'] ?? 'Téléphone non renseigné',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 8),
-            
-            Row(
-              children: [
-                Icon(Icons.badge, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Text(
-                  'Licence: ${data['licenseNumber'] ?? 'Non renseigné'}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 8),
-            
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Text(
-                  'Demande: $formattedDate',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Actions (seulement si en attente)
-            if (isPending) ...[
+      child: InkWell(
+        onTap: () => _showRequestDetails(requestId, data),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // En-tête
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Approuver'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.green,
-                        side: BorderSide(color: Colors.green.shade300),
-                      ),
-                      onPressed: () => _showApproveDialog(requestId, data),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data['name'] ?? 'Nom non renseigné',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          data['specialization'] ?? 'Spécialité non renseignée',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.close, size: 18),
-                      label: const Text('Rejeter'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: BorderSide(color: Colors.red.shade300),
-                      ),
-                      onPressed: () => _showRejectDialog(requestId, data),
+                  Chip(
+                    label: Text(
+                      status == 'pending'
+                          ? 'En attente'
+                          : status == 'approved'
+                              ? 'Approuvé'
+                              : 'Rejeté',
+                    ),
+                    backgroundColor: status == 'pending'
+                        ? Colors.orange.shade100
+                        : status == 'approved'
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                    labelStyle: TextStyle(
+                      color: status == 'pending'
+                          ? Colors.orange.shade800
+                          : status == 'approved'
+                              ? Colors.green.shade800
+                              : Colors.red.shade800,
                     ),
                   ),
                 ],
               ),
-            ],
-            
-            // Si approuvé ou rejeté, afficher qui a traité
-            if (!isPending) ...[
-              const Divider(),
-              Row(
-                children: [
-                  Icon(
-                    status == 'approved' ? Icons.check_circle : Icons.cancel,
-                    size: 16,
-                    color: status == 'approved' ? Colors.green : Colors.red,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    status == 'approved' ? 'Demande approuvée' : 'Demande rejetée',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: status == 'approved' ? Colors.green : Colors.red,
+
+              const SizedBox(height: 12),
+
+              // Informations de base
+              _buildInfoRow(Icons.email, data['email'] ?? 'Email non renseigné'),
+              _buildInfoRow(
+                  Icons.phone, data['phone'] ?? 'Téléphone non renseigné'),
+              _buildInfoRow(Icons.badge,
+                  'Licence: ${data['licenseNumber'] ?? 'Non renseigné'}'),
+
+              // Informations supplémentaires si disponibles
+              if (data['hospital'] != null && data['hospital'].toString().isNotEmpty)
+                _buildInfoRow(Icons.local_hospital, 'Hôpital: ${data['hospital']}'),
+              
+              if (data['experience'] != null && data['experience'] > 0)
+                _buildInfoRow(Icons.work, 'Expérience: ${data['experience']} ans'),
+
+              // Description
+              if (data['description'] != null && data['description'].toString().isNotEmpty)
+                _buildDescriptionSection(data['description']),
+
+              const SizedBox(height: 8),
+
+              _buildInfoRow(Icons.calendar_today, 'Demande: $formattedDate'),
+
+              // Informations d'approbation/rejet
+              if (!isPending) _buildApprovalInfo(data),
+
+              const SizedBox(height: 16),
+
+              // Actions (seulement si en attente)
+              if (isPending) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Approuver'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => _approveRequest(requestId, data),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text('Rejeter'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => _showRejectDialog(requestId, data),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _showApproveDialog(String requestId, Map<String, dynamic> data) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Approuver la demande'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Approuver la demande de ${data['name']} ?'),
-            const SizedBox(height: 8),
-            Text(
-              'Cette action va créer un compte médecin et envoyer un email de confirmation.',
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () => _approveRequest(requestId, data),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-            ),
-            child: const Text('Approuver'),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildDescriptionSection(String description) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.description, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 8),
+              const Text(
+                'Présentation:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[700]!,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApprovalInfo(Map<String, dynamic> data) {
+    final status = data['status'];
+    final isApproved = status == 'approved';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isApproved ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isApproved ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: isApproved ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isApproved ? 'Demande approuvée' : 'Demande rejetée',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isApproved
+                        ? Colors.green.shade800
+                        : Colors.red.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (data['approvedBy'] != null)
+                  Text(
+                    'Par: ${data['approvedBy']}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                if (data['approvedAt'] != null)
+                  Text(
+                    'Le: ${DateFormat('dd/MM/yyyy').format((data['approvedAt'] as Timestamp).toDate())}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                if (data['rejectReason'] != null &&
+                    data['rejectReason'].toString().isNotEmpty)
+                  Text(
+                    'Raison: ${data['rejectReason']}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRequestDetails(String requestId, Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Détails - ${data['name']}'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailItem('Nom complet:', data['name']),
+              _buildDetailItem('Email:', data['email']),
+              _buildDetailItem('Téléphone:', data['phone']),
+              _buildDetailItem('Spécialité:', data['specialization']),
+              _buildDetailItem('Numéro de licence:', data['licenseNumber']),
+              _buildDetailItem('Hôpital/Clinique:', data['hospital'] ?? 'Non renseigné'),
+              _buildDetailItem('Expérience:', '${data['experience'] ?? 0} ans'),
+              
+              if (data['description'] != null && data['description'].toString().isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Présentation professionnelle:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(data['description']),
+                    ),
+                  ],
+                ),
+              
+              const SizedBox(height: 12),
+              _buildDetailItem('Date de demande:', 
+                DateFormat('dd/MM/yyyy HH:mm').format(
+                  (data['requestDate'] as Timestamp).toDate()
+                )
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+          if (data['status'] == 'pending')
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _approveRequest(requestId, data);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Approuver'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _approveRequest(
+      String requestId, Map<String, dynamic> data) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final approvedBy = _auth.currentUser?.email ?? 'Admin';
+
+      await _authService.approveDoctorRequest(
+        requestId: requestId,
+        requestData: data,
+        approvedBy: approvedBy,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ ${data['name']} a été approuvé et peut maintenant se connecter',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   void _showRejectDialog(String requestId, Map<String, dynamic> data) {
     final reasonController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -436,7 +583,7 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
                 TextFormField(
                   controller: reasonController,
                   decoration: const InputDecoration(
-                    labelText: 'Raison du rejet (optionnel)',
+                    labelText: 'Raison du rejet (recommandé)',
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 3,
@@ -449,7 +596,8 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
                 child: const Text('Annuler'),
               ),
               ElevatedButton(
-                onPressed: () => _rejectRequest(requestId, data, reasonController.text),
+                onPressed: () =>
+                    _rejectRequest(requestId, data, reasonController.text),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                 ),
@@ -462,45 +610,30 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
     );
   }
 
-  Future<void> _approveRequest(String requestId, Map<String, dynamic> data) async {
+  Future<void> _rejectRequest(
+      String requestId, Map<String, dynamic> data, String reason) async {
     setState(() => _isLoading = true);
-    
-    try {
-      // 1. Mettre à jour le statut de la demande
-      await _db.collection('doctor_requests').doc(requestId).update({
-        'status': 'approved',
-        'approvedBy': FirebaseAuth.instance.currentUser?.email,
-        'approvedAt': FieldValue.serverTimestamp(),
-      });
 
-      // 2. Créer le compte médecin
-      final appUser = await _authService.createDoctor(
-        email: data['email']!,
-        password: data['password']!,
-        fullName: data['name']!,
-        phone: data['phone']!,
-        specialization: data['specialization']!,
-        hospital: 'À définir', // L'admin devra compléter
-        experience: 0, // Valeur par défaut
-        licenseNumber: data['licenseNumber']!,
-        additionalData: {
-          'sourceRequestId': requestId,
-          'status': 'active',
-        },
+    try {
+      final rejectedBy = _auth.currentUser?.email ?? 'Admin';
+
+      await _authService.rejectDoctorRequest(
+        requestId: requestId,
+        requestData: data,
+        rejectedBy: rejectedBy,
+        reason: reason.isNotEmpty ? reason : null,
       );
 
-      // 3. Afficher un message de succès
       if (mounted) {
-        Navigator.pop(context); // Fermer le dialog
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Demande approuvée et compte créé avec succès !'),
-            backgroundColor: Colors.green,
+            content: Text('Demande rejetée avec succès'),
+            backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
         );
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -517,42 +650,12 @@ class _AdminDoctorRequestsPageState extends State<AdminDoctorRequestsPage> {
     }
   }
 
-  Future<void> _rejectRequest(String requestId, Map<String, dynamic> data, String reason) async {
-    setState(() => _isLoading = true);
-    
-    try {
-      await _db.collection('doctor_requests').doc(requestId).update({
-        'status': 'rejected',
-        'rejectReason': reason.isNotEmpty ? reason : null,
-        'rejectedBy': FirebaseAuth.instance.currentUser?.email,
-        'rejectedAt': FieldValue.serverTimestamp(),
-      });
+  void _changeFilter(String newStatus) {
+    if (!mounted) return;
 
-      if (mounted) {
-        Navigator.pop(context); // Fermer le dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Demande rejetée avec succès'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    setState(() {
+      _filterStatus = newStatus;
+    });
   }
 
   @override

@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctorpoint/core/providers/doctor_provider.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
-import 'package:doctorpoint/presentation/pages/doctor_detail_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/doctor_detail_page.dart';
 
 class AllDoctorsPage extends StatefulWidget {
   const AllDoctorsPage({super.key});

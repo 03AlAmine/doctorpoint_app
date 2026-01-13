@@ -69,7 +69,7 @@ class AdminDashboard extends StatelessWidget {
                     subtitle: 'Voir tous les RDV',
                     color: Colors.green,
                     onTap: () {
-                      // TODO: Implémenter la page des rendez-vous
+                      // : Implémenter la page des rendez-vous
                     },
                   ),
 
@@ -79,7 +79,7 @@ class AdminDashboard extends StatelessWidget {
                     subtitle: 'Gérer les patients',
                     color: Colors.purple,
                     onTap: () {
-                      // TODO: Implémenter la page des patients
+                      // : Implémenter la page des patients
                     },
                   ),
 
@@ -89,7 +89,7 @@ class AdminDashboard extends StatelessWidget {
                     subtitle: 'Voir les rapports',
                     color: Colors.indigo,
                     onTap: () {
-                      // TODO: Implémenter la page des statistiques
+                      // : Implémenter la page des statistiques
                     },
                   ),
 
@@ -99,7 +99,7 @@ class AdminDashboard extends StatelessWidget {
                     subtitle: 'Configurer l\'app',
                     color: Colors.grey,
                     onTap: () {
-                      // TODO: Implémenter les paramètres
+                      // : Implémenter les paramètres
                     },
                   ),
 

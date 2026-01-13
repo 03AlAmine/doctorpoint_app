@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:doctorpoint/core/providers/specialty_provider.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:doctorpoint/data/models/specialty_model.dart';
-import 'package:doctorpoint/presentation/pages/all_doctors_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/all_doctors_page.dart';
 
 class AllSpecialtiesPage extends StatefulWidget {
   const AllSpecialtiesPage({super.key});

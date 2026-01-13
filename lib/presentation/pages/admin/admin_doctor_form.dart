@@ -10,8 +10,13 @@ import 'package:provider/provider.dart';
 
 class AdminDoctorForm extends StatefulWidget {
   final Doctor? doctor;
+  final Map<String, dynamic>? requestData; // Données de la demande d'inscription
 
-  const AdminDoctorForm({super.key, this.doctor});
+  const AdminDoctorForm({
+    super.key, 
+    this.doctor,
+    this.requestData,
+  });
 
   @override
   State<AdminDoctorForm> createState() => _AdminDoctorFormState();
@@ -20,21 +25,19 @@ class AdminDoctorForm extends StatefulWidget {
 class _AdminDoctorFormState extends State<AdminDoctorForm> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _specializationController =
-      TextEditingController();
+  final TextEditingController _specializationController = TextEditingController();
   final TextEditingController _hospitalController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
-  final TextEditingController _ratingController = TextEditingController();
-  final TextEditingController _reviewsController = TextEditingController();
+  final TextEditingController _ratingController = TextEditingController(text: '4.5');
+  final TextEditingController _reviewsController = TextEditingController(text: '0');
   final TextEditingController _experienceController = TextEditingController();
-  final TextEditingController _consultationFeeController =
-      TextEditingController();
+  final TextEditingController _consultationFeeController = TextEditingController(text: '80.00');
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _licenseController = TextEditingController();
 
   String _selectedImage = '';
   XFile? _pickedImage;
@@ -42,7 +45,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
   bool _createAccount = false;
   bool _showPassword = false;
 
-  List<String> _selectedLanguages = [];
+  List<String> _selectedLanguages = ['Français'];
   final List<String> _availableLanguages = [
     'Français',
     'Anglais',
@@ -64,32 +67,90 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
     'Dimanche': ['Fermé'],
   };
 
+  List<String> _availableSpecialties = [];
+  String? _selectedSpecialty;
+
   @override
   void initState() {
     super.initState();
-
+    _loadSpecialties();
+    
     // Si on modifie un médecin existant, pré-remplir les champs
     if (widget.doctor != null) {
       _nameController.text = widget.doctor!.name;
       _specializationController.text = widget.doctor!.specialization;
+      _selectedSpecialty = widget.doctor!.specialization;
       _hospitalController.text = widget.doctor!.hospital;
       _departmentController.text = widget.doctor!.department ?? '';
       _ratingController.text = widget.doctor!.rating.toString();
       _reviewsController.text = widget.doctor!.reviews.toString();
       _experienceController.text = widget.doctor!.experience.toString();
-      _consultationFeeController.text =
-          widget.doctor!.consultationFee.toString();
+      _consultationFeeController.text = widget.doctor!.consultationFee.toString();
       _descriptionController.text = widget.doctor!.description ?? '';
       _phoneController.text = widget.doctor!.phoneNumber ?? '';
       _emailController.text = widget.doctor!.email ?? '';
+      _licenseController.text = widget.doctor!.roleData?['licenseNumber'] ?? '';
       _selectedImage = widget.doctor!.imageUrl;
       _selectedLanguages = widget.doctor!.languages;
       _createAccount = widget.doctor!.hasAccount ?? false;
 
       if (widget.doctor!.availability != null) {
-        _availability =
-            Map<String, List<String>>.from(widget.doctor!.availability!);
+        _availability = Map<String, List<String>>.from(widget.doctor!.availability!);
       }
+    }
+    // Si on vient d'une demande d'inscription, pré-remplir avec ces données
+    else if (widget.requestData != null) {
+      final requestData = widget.requestData!;
+      _nameController.text = requestData['name'] ?? '';
+      _emailController.text = requestData['email'] ?? '';
+      _phoneController.text = requestData['phone'] ?? '';
+      _specializationController.text = requestData['specialization'] ?? '';
+      _selectedSpecialty = requestData['specialization'] ?? '';
+      _licenseController.text = requestData['licenseNumber'] ?? '';
+      _experienceController.text = '0'; // Par défaut pour les nouveaux
+      _createAccount = true; // Auto-cocher la création de compte pour les demandes
+      if (requestData['password'] != null) {
+        _passwordController.text = requestData['password']!;
+        _confirmPasswordController.text = requestData['password']!;
+      }
+    }
+  }
+
+  Future<void> _loadSpecialties() async {
+    try {
+      // Charger les spécialités depuis Firebase
+      final snapshot = await FirebaseFirestore.instance
+          .collection('specialties')
+          .orderBy('name')
+          .get();
+      
+      setState(() {
+        _availableSpecialties = snapshot.docs
+            .map((doc) => doc['name'] as String)
+            .toList();
+      });
+    } catch (e) {
+      print('Erreur chargement spécialités: $e');
+      // Fallback avec des spécialités par défaut
+      setState(() {
+        _availableSpecialties = [
+          'Cardiologie',
+          'Dermatologie',
+          'Neurologie',
+          'Pédiatrie',
+          'Dentisterie',
+          'Gynécologie',
+          'Ophtalmologie',
+          'Orthopédie',
+          'Psychiatrie',
+          'Gastro-entérologie',
+          'Endocrinologie',
+          'Urologie',
+          'ORL',
+          'Radiologie',
+          'Anesthésiologie'
+        ];
+      });
     }
   }
 
@@ -108,6 +169,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _licenseController.dispose();
     super.dispose();
   }
 
@@ -230,6 +292,20 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Vérifier la spécialité sélectionnée
+    if (_selectedSpecialty == null || _selectedSpecialty!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez sélectionner une spécialité'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Utiliser la spécialité sélectionnée
+    _specializationController.text = _selectedSpecialty!;
+
     // Vérifier la cohérence des mots de passe
     if (_createAccount) {
       if (_passwordController.text != _confirmPasswordController.text) {
@@ -258,19 +334,17 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
     try {
       String imageUrl = _selectedImage;
 
-      // Si une nouvelle image a été sélectionnée, l'uploader vers Firebase Storage
+      // Si une nouvelle image a été sélectionnée, l'uploader
       if (_pickedImage != null) {
         imageUrl = await _uploadImageToFirebase(_pickedImage!);
       } else if (imageUrl.isEmpty) {
-        // Image par défaut
-        imageUrl =
-            'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d';
+        // Image par défaut pour médecin
+        imageUrl = 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d';
       }
 
-      // Créer l'objet Doctor
+      // Créer l'objet Doctor avec toutes les données harmonisées
       final doctor = Doctor(
-        id: widget.doctor?.id ??
-            FirebaseFirestore.instance.collection('doctors').doc().id,
+        id: widget.doctor?.id ?? FirebaseFirestore.instance.collection('doctors').doc().id,
         name: _nameController.text.trim(),
         specialization: _specializationController.text.trim(),
         rating: double.parse(_ratingController.text),
@@ -296,25 +370,42 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
             : null,
         password: _createAccount ? _passwordController.text : null,
         hasAccount: _createAccount,
-        accountStatus: _createAccount ? 'pending' : 'none',
+        accountStatus: _createAccount ? 'active' : 'none',
         roles: const ['doctor'],
+        roleData: {
+          'licenseNumber': _licenseController.text.trim(),
+          'specialization': _specializationController.text.trim(),
+        },
         createdAt: widget.doctor?.createdAt ?? DateTime.now(),
-        location: widget.doctor?.location ??
-            const GeoPoint(48.8566, 2.3522), // Paris par défaut
+        location: widget.doctor?.location ?? const GeoPoint(48.8566, 2.3522),
       );
 
       // Sauvegarder dans Firebase via le Provider
-      final doctorProvider =
-          Provider.of<DoctorProvider>(context, listen: false);
+      final doctorProvider = Provider.of<DoctorProvider>(context, listen: false);
 
       if (widget.doctor == null) {
+        // Nouveau médecin
         await doctorProvider.addDoctorToFirebase(doctor);
 
         // Créer le compte Firebase Authentication si demandé
         if (_createAccount) {
           await _createFirebaseAuthAccount(doctor);
+          
+          // Si c'est une demande d'inscription, mettre à jour son statut
+          if (widget.requestData != null && widget.requestData!['requestId'] != null) {
+            await FirebaseFirestore.instance
+                .collection('doctor_requests')
+                .doc(widget.requestData!['requestId'])
+                .update({
+              'status': 'approved',
+              'approvedBy': FirebaseAuth.instance.currentUser?.email,
+              'approvedAt': FieldValue.serverTimestamp(),
+              'doctorId': doctor.id,
+            });
+          }
         }
       } else {
+        // Modification d'un médecin existant
         await doctorProvider.updateDoctorInFirebase(doctor);
 
         // Mettre à jour le compte Firebase Authentication si nécessaire
@@ -337,7 +428,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
 
       // Retourner à la page précédente
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context, doctor); // Retourner le docteur créé/modifié
       }
     } catch (e) {
       // Afficher une erreur
@@ -354,22 +445,9 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
     }
   }
 
-  // AJOUTEZ CETTE MÉTHODE POUR L'UPLOAD DES IMAGES
   Future<String> _uploadImageToFirebase(XFile imageFile) async {
     try {
-      // Pour l'instant, retournez une URL d'image par défaut
-      // Vous pouvez utiliser firebase_storage package
-
-      // Exemple avec firebase_storage:
-      /*
-      final storage = FirebaseStorage.instance;
-      final Reference storageRef = storage.ref().child('doctors/${DateTime.now().millisecondsSinceEpoch}.jpg');
-      final UploadTask uploadTask = storageRef.putFile(File(imageFile.path));
-      final TaskSnapshot taskSnapshot = await uploadTask;
-      final String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-      return downloadUrl;
-      */
-
+      // : Implémenter Firebase Storage
       return 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d';
     } catch (e) {
       print('Erreur upload image: $e');
@@ -377,7 +455,6 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
     }
   }
 
-  // AJOUTEZ cette méthode pour créer le compte Firebase Authentication
   Future<void> _createFirebaseAuthAccount(Doctor doctor) async {
     try {
       final auth = FirebaseAuth.instance;
@@ -390,13 +467,22 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
 
       // Mettre à jour le profil de l'utilisateur
       await userCredential.user!.updateDisplayName(doctor.name);
+      await userCredential.user!.updatePhotoURL(doctor.imageUrl);
 
-      // Ajouter des claims personnalisés (rôle doctor)
-      await userCredential.user!.getIdTokenResult(true);
+      // Ajouter le rôle dans Firestore users
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'uid': userCredential.user!.uid,
+        'email': doctor.email,
+        'fullName': doctor.name,
+        'phone': doctor.phoneNumber ?? '',
+        'role': 'doctor',
+        'profileCompleted': true,
+        'emailVerified': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'doctorId': doctor.id, // Lien vers la collection doctors
+      });
 
       print('Compte Firebase Authentication créé pour ${doctor.name}');
-
-      // Vous pouvez utiliser Firebase Functions pour cela
     } catch (e) {
       print('Erreur lors de la création du compte auth: $e');
       rethrow;
@@ -417,9 +503,22 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
           ElevatedButton(
             onPressed: () async {
               try {
-                final doctorProvider =
-                    Provider.of<DoctorProvider>(context, listen: false);
+                final doctorProvider = Provider.of<DoctorProvider>(context, listen: false);
                 await doctorProvider.deleteDoctorFromFirebase(doctor.id);
+                
+                // Si le médecin a un compte auth, le supprimer aussi
+                if (doctor.hasAccount == true && doctor.email != null) {
+                  try {
+                    final user = await FirebaseAuth.instance.fetchSignInMethodsForEmail(doctor.email!);
+                    if (user.isNotEmpty) {
+                      // Note: Firebase Admin SDK serait nécessaire pour supprimer un utilisateur
+                      // Pour l'instant, on se contente de désactiver
+                      print('Compte auth trouvé pour ${doctor.email}, à désactiver via Admin SDK');
+                    }
+                  } catch (e) {
+                    print('Erreur vérification compte auth: $e');
+                  }
+                }
 
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -536,7 +635,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
                 controller: _passwordController,
                 obscureText: !_showPassword,
                 decoration: InputDecoration(
-                  hintText: 'Mot de passe sécurisé',
+                  hintText: 'Mot de passe sécurisé (min. 6 caractères)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -631,12 +730,58 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
     );
   }
 
+  Widget _buildSpecialtyDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Spécialité *',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<String>(
+          value: _selectedSpecialty,
+          decoration: InputDecoration(
+            hintText: 'Sélectionner une spécialité',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          ),
+          items: _availableSpecialties.map((specialty) {
+            return DropdownMenuItem(
+              value: specialty,
+              child: Text(specialty),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedSpecialty = value;
+              if (value != null) {
+                _specializationController.text = value;
+              }
+            });
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Veuillez sélectionner une spécialité';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.doctor == null
-            ? 'Ajouter un médecin'
+            ? (widget.requestData != null ? 'Approuver la demande' : 'Ajouter un médecin')
             : 'Modifier le médecin'),
         backgroundColor: AppTheme.primaryColor,
         actions: [
@@ -668,8 +813,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(60),
                                 color: AppTheme.lightGrey,
-                                border:
-                                    Border.all(color: AppTheme.primaryColor),
+                                border: Border.all(color: AppTheme.primaryColor),
                               ),
                               child: _pickedImage != null
                                   ? ClipRRect(
@@ -681,13 +825,11 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
                                     )
                                   : _selectedImage.isNotEmpty
                                       ? ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(60),
+                                          borderRadius: BorderRadius.circular(60),
                                           child: Image.network(
                                             _selectedImage,
                                             fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
+                                            errorBuilder: (context, error, stackTrace) {
                                               return Center(
                                                 child: Icon(
                                                   Icons.person,
@@ -742,17 +884,8 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
 
                     const SizedBox(height: 12),
 
-                    _buildTextFormField(
-                      controller: _specializationController,
-                      label: 'Spécialisation *',
-                      hintText: 'Cardiologue',
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer la spécialisation';
-                        }
-                        return null;
-                      },
-                    ),
+                    // Spécialité avec dropdown
+                    _buildSpecialtyDropdown(),
 
                     const SizedBox(height: 12),
 
@@ -776,6 +909,20 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
                       hintText: 'Cardiologie',
                     ),
 
+                    const SizedBox(height: 12),
+
+                    _buildTextFormField(
+                      controller: _licenseController,
+                      label: 'Numéro de licence *',
+                      hintText: 'MED123456',
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Le numéro de licence est requis';
+                        }
+                        return null;
+                      },
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Statistiques
@@ -794,7 +941,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
                           child: _buildTextFormField(
                             controller: _ratingController,
                             label: 'Note (1-5) *',
-                            hintText: '4.8',
+                            hintText: '4.5',
                             keyboardType: TextInputType.number,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -885,8 +1032,7 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
                     Wrap(
                       spacing: 8,
                       children: _availableLanguages.map((language) {
-                        final isSelected =
-                            _selectedLanguages.contains(language);
+                        final isSelected = _selectedLanguages.contains(language);
                         return FilterChip(
                           label: Text(language),
                           selected: isSelected,
@@ -948,18 +1094,33 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
 
                     _buildTextFormField(
                       controller: _phoneController,
-                      label: 'Téléphone (optionnel)',
+                      label: 'Téléphone *',
                       hintText: '+33 1 23 45 67 89',
                       keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Le téléphone est requis';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 12),
 
                     _buildTextFormField(
                       controller: _emailController,
-                      label: 'Email (optionnel)',
+                      label: 'Email *',
                       hintText: 'contact@medecin.com',
                       keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'L\'email est requis';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Email invalide';
+                        }
+                        return null;
+                      },
                     ),
 
                     // Section compte docteur
@@ -1057,5 +1218,11 @@ class _AdminDoctorFormState extends State<AdminDoctorForm> {
         ),
       ],
     );
+  }
+}
+
+extension on FirebaseAuth {
+  Future<dynamic> fetchSignInMethodsForEmail(String s) {
+    throw UnimplementedError('fetchSignInMethodsForEmail is not implemented.');
   }
 }
