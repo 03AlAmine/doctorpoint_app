@@ -44,6 +44,8 @@ dependencies:
   # Localization - AJOUTÉ
   flutter_localizations:
     sdk: flutter
+  syncfusion_flutter_charts: ^32.1.23
+  table_calendar: ^3.2.0
 
 dev_dependencies:
   flutter_test:

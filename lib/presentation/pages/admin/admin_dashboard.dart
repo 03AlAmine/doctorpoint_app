@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:doctorpoint/services/auth_service.dart';
 import 'package:flutter/material.dart';

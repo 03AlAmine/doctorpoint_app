@@ -665,7 +665,7 @@ class _HomePageState extends State<HomePage> {
       DoctorProvider doctorProvider, double screenWidth) {
     final isSmallScreen = screenWidth < 360;
     final cardWidth = isSmallScreen ? 180.0 : 220.0;
-    final cardHeight = isSmallScreen ? 180.0 : 220.0;
+    final cardHeight = isSmallScreen ? 200.0 : 240.0; // Augmenté légèrement
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,8 +741,11 @@ class _HomePageState extends State<HomePage> {
             ),
           )
         else
-          SizedBox(
+          Container(
+            // AJOUT: Utiliser Container au lieu de SizedBox
             height: cardHeight,
+            padding: EdgeInsets.only(
+                bottom: 4), // AJOUT: Espace supplémentaire en bas
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),

@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
@@ -15,7 +17,7 @@ class _AdminPatientsPageState extends State<AdminPatientsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _filterStatus = 'all';
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void dispose() {

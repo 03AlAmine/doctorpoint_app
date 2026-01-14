@@ -1,4 +1,4 @@
-
+import 'package:doctorpoint/presentation/pages/patient/book_appointment_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
@@ -6,7 +6,6 @@ import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:doctorpoint/core/providers/doctor_provider.dart';
-import 'package:doctorpoint/presentation/widgets/booking_modal.dart'; // Import ajouté
 
 class DoctorDetailPage extends StatefulWidget {
   final Doctor doctor;
@@ -46,19 +45,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     (index) => DateTime.now().add(Duration(days: index)),
   );
 
-  // Fonction pour afficher le modal de réservation
-  void _showBookingModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return BookingModal(doctor: widget.doctor);
-      },
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +61,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             children: [
               // Header avec photo du médecin
               _buildDoctorHeader(screenWidth, doctorProvider),
-              
+
               // Contenu principal
               Padding(
                 padding: EdgeInsets.symmetric(
@@ -101,32 +88,32 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                         color: AppTheme.greyColor,
                       ),
                     ),
-                    
+
                     SizedBox(height: isSmallScreen ? 16 : 20),
-                    
+
                     // Statistiques
                     _buildStatsSection(isSmallScreen),
-                    
+
                     SizedBox(height: isSmallScreen ? 20 : 24),
-                    
+
                     // À propos du médecin
                     _buildAboutSection(isSmallScreen),
-                    
+
                     SizedBox(height: isSmallScreen ? 20 : 24),
-                    
+
                     // Horaires de travail
                     _buildWorkingTimeSection(isSmallScreen),
-                    
+
                     SizedBox(height: isSmallScreen ? 20 : 24),
-                    
+
                     // Calendrier
                     _buildCalendarSection(isSmallScreen),
-                    
+
                     SizedBox(height: isSmallScreen ? 20 : 24),
-                    
+
                     // Créneaux horaires
                     _buildTimeSlotsSection(isSmallScreen),
-                    
+
                     SizedBox(height: isSmallScreen ? 40 : 48),
                   ],
                 ),
@@ -135,9 +122,10 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
           ),
         ),
       ),
-      
+
       // Bouton de prise de rendez-vous (MODIFIÉ)
-      bottomNavigationBar: _buildBookAppointmentButton(isSmallScreen, screenWidth),
+      bottomNavigationBar:
+          _buildBookAppointmentButton(isSmallScreen, screenWidth),
     );
   }
 
@@ -167,19 +155,21 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                   color: AppTheme.lightGrey,
                   child: Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     ),
                   ),
                 ),
                 errorWidget: (context, url, error) => Container(
                   color: AppTheme.lightGrey,
-                  child: const Icon(Icons.person, size: 100, color: Colors.white),
+                  child:
+                      const Icon(Icons.person, size: 100, color: Colors.white),
                 ),
               );
             },
           ),
         ),
-        
+
         // Overlay gradient
         Container(
           height: headerHeight,
@@ -197,7 +187,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             ),
           ),
         ),
-        
+
         // Boutons de navigation
         Positioned(
           top: isSmallScreen ? 12 : 16,
@@ -218,7 +208,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             ),
           ),
         ),
-        
+
         Positioned(
           top: isSmallScreen ? 12 : 16,
           right: isSmallScreen ? 12 : 16,
@@ -231,7 +221,9 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                 ),
                 child: IconButton(
                   icon: Icon(
-                    widget.doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
+                    widget.doctor.isFavorite
+                        ? Icons.favorite
+                        : Icons.favorite_border,
                     color: widget.doctor.isFavorite ? Colors.red : Colors.black,
                   ),
                   onPressed: () {
@@ -263,7 +255,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             ],
           ),
         ),
-        
+
         // Indicateurs de page
         Positioned(
           bottom: isSmallScreen ? 16 : 20,
@@ -323,7 +315,8 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
-  Widget _buildStatItem(String title, String value, IconData icon, bool isSmallScreen) {
+  Widget _buildStatItem(
+      String title, String value, IconData icon, bool isSmallScreen) {
     return Column(
       children: [
         Container(
@@ -382,9 +375,9 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
           ),
           textAlign: TextAlign.justify,
         ),
-        
+
         SizedBox(height: isSmallScreen ? 12 : 16),
-        
+
         // Langues parlées
         Wrap(
           spacing: isSmallScreen ? 8 : 12,
@@ -405,15 +398,16 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
   }
 
   Widget _buildWorkingTimeSection(bool isSmallScreen) {
-    final Map<String, dynamic> schedule = widget.doctor.availability ?? {
-      'Lundi': ['09:00', '18:00'],
-      'Mardi': ['09:00', '18:00'],
-      'Mercredi': ['09:00', '18:00'],
-      'Jeudi': ['09:00', '18:00'],
-      'Vendredi': ['09:00', '18:00'],
-      'Samedi': ['09:00', '14:00'],
-      'Dimanche': ['Fermé'],
-    };
+    final Map<String, dynamic> schedule = widget.doctor.availability ??
+        {
+          'Lundi': ['09:00', '18:00'],
+          'Mardi': ['09:00', '18:00'],
+          'Mercredi': ['09:00', '18:00'],
+          'Jeudi': ['09:00', '18:00'],
+          'Vendredi': ['09:00', '18:00'],
+          'Samedi': ['09:00', '14:00'],
+          'Dimanche': ['Fermé'],
+        };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,7 +444,9 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                       ),
                     ),
                     Text(
-                      isClosed ? 'Fermé' : '${entry.value[0]} - ${entry.value[1]}',
+                      isClosed
+                          ? 'Fermé'
+                          : '${entry.value[0]} - ${entry.value[1]}',
                       style: TextStyle(
                         fontSize: isSmallScreen ? 14 : 16,
                         color: isClosed ? Colors.red : AppTheme.primaryColor,
@@ -489,7 +485,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
               final date = _availableDates[index];
               final isSelected = _selectedDate.day == date.day;
               final isToday = date.day == DateTime.now().day;
-              
+
               return GestureDetector(
                 onTap: () {
                   setState(() {
@@ -503,10 +499,11 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected ? AppTheme.primaryColor : Colors.white,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                    borderRadius:
+                        BorderRadius.circular(isSmallScreen ? 12 : 16),
                     border: Border.all(
-                      color: isToday && !isSelected 
-                          ? AppTheme.primaryColor 
+                      color: isToday && !isSelected
+                          ? AppTheme.primaryColor
                           : AppTheme.lightGrey,
                       width: isToday && !isSelected ? 2 : 1,
                     ),
@@ -570,7 +567,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             final slot = _timeSlots[index];
             final isSelected = _selectedTimeSlot == index;
             final isAvailable = slot['isAvailable'] as bool;
-            
+
             return GestureDetector(
               onTap: isAvailable
                   ? () {
@@ -608,7 +605,8 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                         : isAvailable
                             ? AppTheme.textColor
                             : Colors.grey[400],
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ),
@@ -619,6 +617,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
     );
   }
 
+// Widget _buildBookAppointmentButton corrigé dans DoctorDetailPage.dart
   Widget _buildBookAppointmentButton(bool isSmallScreen, double screenWidth) {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -661,16 +660,24 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
           ),
           const Spacer(),
           ElevatedButton(
-            onPressed: _showBookingModal, // MODIFIÉ: Appel du modal
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  // CORRECTION ICI: utiliser widget.doctor au lieu de doctor
+                  builder: (context) =>
+                      BookAppointmentPage(doctor: widget.doctor),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(
                 horizontal: isSmallScreen ? 24 : 32,
                 vertical: isSmallScreen ? 14 : 16,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
             child: Text(
@@ -685,6 +692,4 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
       ),
     );
   }
-
-  // SUPPRIMER les anciennes fonctions de confirmation et garder seulement _showBookingModal
 }
