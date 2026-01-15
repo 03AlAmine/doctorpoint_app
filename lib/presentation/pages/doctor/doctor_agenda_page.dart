@@ -38,7 +38,12 @@ class _DoctorAgendaPageState extends State<DoctorAgendaPage> {
   void initState() {
     super.initState();
     _selectedDay = DateTime.now();
-    _loadInitialData();
+    _loadInitialData().then((_) async {
+      // Charger les créneaux pour aujourd'hui
+      if (_selectedDay != null) {
+        await _loadAvailableTimeSlots(_selectedDay!);
+      }
+    });
   }
 
   Future<void> _loadInitialData() async {
@@ -143,10 +148,10 @@ class _DoctorAgendaPageState extends State<DoctorAgendaPage> {
           final patientId = data['patientId'];
           String patientName = 'Patient';
           if (patientId != null) {
-            final patientDoc =
-                await _db.collection('patients').doc(patientId).get();
-            if (patientDoc.exists) {
-              patientName = patientDoc['fullName'] ?? 'Patient';
+            final userDoc = await _db.collection('users').doc(patientId).get();
+            if (userDoc.exists) {
+              final userData = userDoc.data()!;
+              patientName = userData['fullName'] ?? 'Patient';
             }
           }
 
@@ -179,15 +184,16 @@ class _DoctorAgendaPageState extends State<DoctorAgendaPage> {
     }
   }
 
+// MODIFIER _loadAvailableTimeSlots pour utiliser le nouveau service :
   Future<void> _loadAvailableTimeSlots(DateTime date) async {
-    if (_doctorAvailability == null) return;
-
     setState(() {
       _isLoading = true;
       _selectedTime = null;
     });
 
     try {
+      // Supprimer l'ancienne logique d'initialisation des slots
+      // Utiliser directement la nouvelle méthode
       final slots = await _appointmentService.getAvailableTimeSlots(
         doctorId: widget.doctor.id,
         date: date,
@@ -858,7 +864,6 @@ class _DoctorAgendaPageState extends State<DoctorAgendaPage> {
     );
   }
 }
-
 
 class AppointmentDetailsDialog extends StatelessWidget {
   final Map<String, dynamic> appointment;

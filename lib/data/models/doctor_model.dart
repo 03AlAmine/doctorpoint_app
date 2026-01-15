@@ -226,4 +226,62 @@ class Doctor {
       documents: documents ?? this.documents,
     );
   }
+
+  // Ajouter cette méthode dans la classe Doctor (doctor_model.dart)
+  factory Doctor.fromMap(Map<String, dynamic> map) {
+    // Extraire licenseNumber de roleData
+    String? licenseNumber;
+    if (map['roleData'] != null && map['roleData'] is Map) {
+      final roleData = map['roleData'] as Map<String, dynamic>;
+      licenseNumber = roleData['licenseNumber']?.toString();
+    }
+
+    return Doctor(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      specialization: map['specialization'] ?? '',
+      specialtyIcon: map['specialtyIcon'],
+      rating: (map['rating'] ?? 0.0).toDouble(),
+      reviews: map['reviews'] ?? 0,
+      experience: map['experience'] ?? 0,
+      hospital: map['hospital'] ?? '',
+      department: map['department'],
+      imageUrl: map['imageUrl'] ?? '',
+      isFavorite: map['isFavorite'] ?? false,
+      consultationFee: (map['consultationFee'] ?? 0.0).toDouble(),
+      languages: List<String>.from(map['languages'] ?? []),
+      description: map['description'],
+      availability: map['availability'] != null
+          ? Map<String, dynamic>.from(map['availability'])
+          : null,
+      location: map['location'] as GeoPoint?,
+      phoneNumber: map['phoneNumber'],
+      email: map['email'],
+      password: map['password'],
+      hasAccount: map['hasAccount'] ?? false,
+      accountStatus: map['accountStatus'] ?? 'pending',
+      lastLogin: map['lastLogin'] != null
+          ? (map['lastLogin'] as Timestamp).toDate()
+          : null,
+      roles: List<String>.from(map['roles'] ?? ['doctor']),
+      roleData: map['roleData'] != null
+          ? Map<String, dynamic>.from(map['roleData'])
+          : null,
+      licenseNumber: licenseNumber ?? map['licenseNumber'],
+      education:
+          map['education'] != null ? List<String>.from(map['education']) : null,
+      certifications: map['certifications'] != null
+          ? List<String>.from(map['certifications'])
+          : null,
+      createdAt: map['createdAt'] != null
+          ? (map['createdAt'] as Timestamp).toDate()
+          : null,
+      verification: map['verification'] != null
+          ? Map<String, dynamic>.from(map['verification'])
+          : null,
+      documents: map['documents'] != null
+          ? Map<String, dynamic>.from(map['documents'])
+          : null,
+    );
+  }
 }

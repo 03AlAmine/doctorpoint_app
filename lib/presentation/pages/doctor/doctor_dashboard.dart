@@ -30,33 +30,33 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
   // Pages principales avec leurs widgets
   List<Map<String, dynamic>> get _pages => [
-    {
-      'title': 'Tableau',
-      'icon': Icons.dashboard,
-      'page': 'overview',
-      'widget': _buildOverviewPage(),
-    },
-    {
-      'title': 'Agenda',
-      'icon': Icons.calendar_today,
-      'page': 'calendar',
-      'widget':
-          DoctorAgendaPage(doctor: widget.doctor), // Page agenda améliorée
-    },
-    {
-      'title': 'Patients',
-      'icon': Icons.people,
-      'page': 'patients',
-      'widget': DoctorPatientsPage(doctor: widget.doctor),
-    },
-    {
-      'title': 'Messages',
-      'icon': Icons.message,
-      'page': 'messaging',
-      'widget':
-          DoctorMessagingPage(doctor: widget.doctor), // Messagerie complète
-    },
-  ];
+        {
+          'title': 'Tableau',
+          'icon': Icons.dashboard,
+          'page': 'overview',
+          'widget': _buildOverviewPage(),
+        },
+        {
+          'title': 'Agenda',
+          'icon': Icons.calendar_today,
+          'page': 'calendar',
+          'widget':
+              DoctorAgendaPage(doctor: widget.doctor), // Page agenda améliorée
+        },
+        {
+          'title': 'Patients',
+          'icon': Icons.people,
+          'page': 'patients',
+          'widget': DoctorPatientsPage(doctor: widget.doctor),
+        },
+        {
+          'title': 'Messages',
+          'icon': Icons.message,
+          'page': 'messaging',
+          'widget':
+              DoctorMessagingPage(doctor: widget.doctor), // Messagerie complète
+        },
+      ];
 
   // Variables pour les données dynamiques
   Map<String, dynamic> _stats = {
@@ -196,14 +196,16 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       for (var doc in snapshot.docs) {
         final data = doc.data();
 
-        // Récupérer les informations du patient
+// Récupérer les informations du patient
         final patientId = data['patientId'];
         String patientName = 'Patient';
         if (patientId != null) {
-          final patientDoc =
-              await _db.collection('patients').doc(patientId.toString()).get();
-          if (patientDoc.exists) {
-            patientName = patientDoc['fullName'] ?? 'Patient';
+          // CORRECTION: Chercher dans 'users' au lieu de 'patients'
+          final userDoc =
+              await _db.collection('users').doc(patientId.toString()).get();
+          if (userDoc.exists) {
+            final userData = userDoc.data()!;
+            patientName = userData['fullName'] as String? ?? 'Patient';
           }
         }
 
@@ -251,10 +253,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         final patientId = data['patientId'];
         String patientName = 'Patient';
         if (patientId != null) {
-          final patientDoc =
+          final userDoc =
               await _db.collection('patients').doc(patientId.toString()).get();
-          if (patientDoc.exists) {
-            patientName = patientDoc['fullName'] ?? 'Patient';
+          if (userDoc.exists) {
+            patientName = userDoc['fullName'] ?? 'Patient';
           }
         }
 

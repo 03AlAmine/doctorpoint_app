@@ -4,6 +4,7 @@ import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/data/models/doctor_availability.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:doctorpoint/services/appointment_service.dart'; // IMPORT AJOUTÉ
 
 class DoctorAvailabilityPage extends StatefulWidget {
   final Doctor doctor;
@@ -23,7 +24,8 @@ class DoctorAvailabilityPage extends StatefulWidget {
 
 class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  
+  final AppointmentService _appointmentService = AppointmentService(); // INSTANCE AJOUTÉE
+
   List<DaySchedule> _weeklySchedule = [];
   List<DateTime> _holidays = [];
   int _appointmentDuration = 30;
@@ -50,8 +52,16 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
   }
 
   void _initializeDefaultSchedule() {
-    final days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    
+    final days = [
+      'Lundi',
+      'Mardi',
+      'Mercredi',
+      'Jeudi',
+      'Vendredi',
+      'Samedi',
+      'Dimanche'
+    ];
+
     setState(() {
       _weeklySchedule = days.map((day) {
         final isWeekend = day == 'Samedi' || day == 'Dimanche';
@@ -89,6 +99,9 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
           .doc(widget.doctor.id)
           .set(availability.toMap());
 
+      // IMPORTANT : Nettoyer les anciens rendez-vous en conflit
+      await _cleanupConflictingAppointments(availability);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Disponibilité sauvegardée avec succès'),
@@ -109,6 +122,48 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
       );
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _cleanupConflictingAppointments(
+      DoctorAvailability availability) async {
+    try {
+      final appointments = await _db
+          .collection('appointments')
+          .where('doctorId', isEqualTo: widget.doctor.id)
+          .where('status', whereIn: ['pending', 'confirmed']).get();
+
+      for (var appointment in appointments.docs) {
+        final data = appointment.data();
+        final dateStr = data['date'] as String;
+        final time = data['time'] as String;
+
+        final dateParts = dateStr.split('-');
+        if (dateParts.length == 3) {
+          final date = DateTime(
+            int.parse(dateParts[0]),
+            int.parse(dateParts[1]),
+            int.parse(dateParts[2]),
+          );
+
+          final isAvailable = await _appointmentService.checkAvailability(
+            doctorId: widget.doctor.id,
+            date: date,
+            time: time,
+          );
+
+          if (!isAvailable) {
+            await appointment.reference.update({
+              'status': 'cancelled',
+              'cancellationReason':
+                  'Créneau supprimé suite à modification des horaires',
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Erreur nettoyage rendez-vous: $e');
     }
   }
 
@@ -158,7 +213,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
             ),
             if (!schedule.isAvailable)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(20),
@@ -254,7 +310,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                               ),
                             ),
                             onChanged: (value) {
-                              final newSlots = List<TimeSlot>.from(schedule.timeSlots);
+                              final newSlots =
+                                  List<TimeSlot>.from(schedule.timeSlots);
                               newSlots[slotIndex] = slot.copyWith(start: value);
                               setState(() {
                                 _weeklySchedule[dayIndex] = schedule.copyWith(
@@ -290,7 +347,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                               ),
                             ),
                             onChanged: (value) {
-                              final newSlots = List<TimeSlot>.from(schedule.timeSlots);
+                              final newSlots =
+                                  List<TimeSlot>.from(schedule.timeSlots);
                               newSlots[slotIndex] = slot.copyWith(end: value);
                               setState(() {
                                 _weeklySchedule[dayIndex] = schedule.copyWith(
@@ -319,7 +377,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                         ),
                       ),
                       onPressed: () {
-                        final newSlots = List<TimeSlot>.from(schedule.timeSlots);
+                        final newSlots =
+                            List<TimeSlot>.from(schedule.timeSlots);
                         newSlots.removeAt(slotIndex);
                         setState(() {
                           _weeklySchedule[dayIndex] = schedule.copyWith(
@@ -416,7 +475,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                       children: [
                         Expanded(
                           child: TextFormField(
-                            controller: TextEditingController(text: breakSlot.start),
+                            controller:
+                                TextEditingController(text: breakSlot.start),
                             decoration: InputDecoration(
                               labelText: 'Début pause',
                               border: OutlineInputBorder(
@@ -439,8 +499,10 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                               ),
                             ),
                             onChanged: (value) {
-                              final newBreaks = List<TimeSlot>.from(schedule.breakTimes);
-                              newBreaks[breakIndex] = breakSlot.copyWith(start: value);
+                              final newBreaks =
+                                  List<TimeSlot>.from(schedule.breakTimes);
+                              newBreaks[breakIndex] =
+                                  breakSlot.copyWith(start: value);
                               setState(() {
                                 _weeklySchedule[dayIndex] = schedule.copyWith(
                                   breakTimes: newBreaks,
@@ -452,7 +514,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: TextFormField(
-                            controller: TextEditingController(text: breakSlot.end),
+                            controller:
+                                TextEditingController(text: breakSlot.end),
                             decoration: InputDecoration(
                               labelText: 'Fin pause',
                               border: OutlineInputBorder(
@@ -475,8 +538,10 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                               ),
                             ),
                             onChanged: (value) {
-                              final newBreaks = List<TimeSlot>.from(schedule.breakTimes);
-                              newBreaks[breakIndex] = breakSlot.copyWith(end: value);
+                              final newBreaks =
+                                  List<TimeSlot>.from(schedule.breakTimes);
+                              newBreaks[breakIndex] =
+                                  breakSlot.copyWith(end: value);
                               setState(() {
                                 _weeklySchedule[dayIndex] = schedule.copyWith(
                                   breakTimes: newBreaks,
@@ -503,7 +568,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
                       ),
                     ),
                     onPressed: () {
-                      final newBreaks = List<TimeSlot>.from(schedule.breakTimes);
+                      final newBreaks =
+                          List<TimeSlot>.from(schedule.breakTimes);
                       newBreaks.removeAt(breakIndex);
                       setState(() {
                         _weeklySchedule[dayIndex] = schedule.copyWith(
@@ -522,7 +588,8 @@ class _DoctorAvailabilityPageState extends State<DoctorAvailabilityPage> {
             child: ElevatedButton.icon(
               onPressed: () {
                 final newBreaks = List<TimeSlot>.from(schedule.breakTimes);
-                newBreaks.add(TimeSlot(start: '12:00', end: '13:00', isBreak: true));
+                newBreaks
+                    .add(TimeSlot(start: '12:00', end: '13:00', isBreak: true));
                 setState(() {
                   _weeklySchedule[dayIndex] = schedule.copyWith(
                     breakTimes: newBreaks,

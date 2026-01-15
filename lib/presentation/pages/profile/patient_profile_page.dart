@@ -169,7 +169,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
       // Upload photo si nouvelle
       if (_selectedImage != null) {
         _imageUrl =
-            await _patientService.uploadProfilePhoto(_selectedImage!.path);
+            await _patientService.uploadProfilePhoto(_selectedImage!.path as File);
       }
 
       // Créer ou mettre à jour le patient

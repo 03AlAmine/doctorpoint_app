@@ -1,5 +1,5 @@
 // lib/presentation/pages/patient/appointments_page.dart
-import 'package:doctorpoint/data/models/patient_appointment_service.dart';
+import 'package:doctorpoint/services/patient_appointment_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
