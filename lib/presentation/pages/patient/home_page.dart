@@ -1,6 +1,10 @@
+// ignore_for_file: unnecessary_to_list_in_spreads
+
 import 'package:doctorpoint/core/providers/auth_provider.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
-import 'package:doctorpoint/presentation/pages/profile/patient_profile_page.dart';
+import 'package:doctorpoint/data/models/patient_model.dart';
+import 'package:doctorpoint/presentation/pages/patient/patient_messaging_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/patient_profile_page.dart';
 import 'package:doctorpoint/presentation/pages/patient/search_page.dart';
 import 'package:doctorpoint/presentation/widgets/doctor_card.dart';
 import 'package:flutter/material.dart';
@@ -43,23 +47,46 @@ class _HomePageState extends State<HomePage> {
 
   int _currentPromotion = 0;
 
-  // Liste des pages pour la navigation AJOUTÉ
-// Dans la liste des pages du bottom navigation
   final List<Widget> _pages = [
     Container(), // Placeholder pour Home
     const AppointmentsPage(),
-    Container(
-      color: Colors.white,
-      child: const Center(child: Text('Messages - Page à créer')),
-    ),
-    const PatientProfilePage(), // ← Ici le profil patient
+    Container(), // Messagerie - sera remplacé dynamiquement
+    const PatientProfilePage(),
   ];
 
   // Fonction pour changer d'onglet AJOUTÉ
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 2) {
+      // Navigation vers la messagerie
+      _navigateToMessaging(context);
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
+  void _navigateToMessaging(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Créez un patient temporaire avec les données disponibles
+    final patient = Patient(
+      id: authProvider.userProfile?.uid ?? '',
+      uid: authProvider.userProfile?.uid ?? '',
+      email: authProvider.userProfile?.email ?? '',
+      fullName: authProvider.userProfile?.fullName ?? 'Utilisateur',
+      phone: authProvider.userProfile?.phone ?? '',
+      profileCompleted: authProvider.userProfile?.profileCompleted ?? false,
+      emailVerified: true,
+      createdAt: DateTime.now(),
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PatientMessagingPage(patient: patient),
+      ),
+    );
   }
 
   @override
@@ -71,6 +98,7 @@ class _HomePageState extends State<HomePage> {
         bottomNavigationBar: _buildBottomNavigationBar(),
       );
     }
+
 
     // Si c'est l'index 0 (Accueil), on affiche le contenu original
     final doctorProvider = Provider.of<DoctorProvider>(context);
@@ -112,6 +140,10 @@ class _HomePageState extends State<HomePage> {
                     _buildSpecialtyCategories(specialtyProvider, screenWidth),
                     SizedBox(height: screenHeight * 0.03),
 
+                    // Accès rapide
+                    _buildQuickActions(screenWidth),
+                    SizedBox(height: screenHeight * 0.03),
+
                     // Médecins populaires
                     _buildPopularDoctors(doctorProvider, screenWidth),
                     SizedBox(height: screenHeight * 0.03),
@@ -120,9 +152,14 @@ class _HomePageState extends State<HomePage> {
                     _buildAllDoctors(doctorProvider, screenWidth),
                     SizedBox(height: screenHeight * 0.03),
 
+                    // Conseils santé
+                    _buildHealthTips(screenWidth),
+                    SizedBox(height: screenHeight * 0.03),
+
                     // Section de bien-être
                     _buildWellnessSection(screenWidth),
-                    SizedBox(height: screenHeight * 0.02), // Espace final
+                    SizedBox(
+                        height: screenHeight * 0.04), // Plus d'espace final
                   ],
                 ),
               ),
@@ -130,93 +167,129 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(), // AJOUTÉ
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  // Fonction pour construire la navigation en bas AJOUTÉ
   Widget _buildBottomNavigationBar() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: AppTheme.primaryColor,
-      unselectedItemColor: AppTheme.greyColor,
-      selectedLabelStyle: TextStyle(
-        fontSize: isSmallScreen ? 10 : 12,
-        fontWeight: FontWeight.w600,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
-      unselectedLabelStyle: TextStyle(
-        fontSize: isSmallScreen ? 10 : 12,
+      child: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: AppTheme.primaryColor,
+        unselectedItemColor: AppTheme.greyColor,
+        selectedFontSize: 0,
+        unselectedFontSize: 0,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        elevation: 0,
+        iconSize: isSmallScreen ? 22 : 26,
+        items: [
+          BottomNavigationBarItem(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _selectedIndex == 0
+                    ? AppTheme.primaryColor.withOpacity(0.1)
+                    : Colors.transparent,
+              ),
+              child: Icon(
+                _selectedIndex == 0 ? Icons.home : Icons.home_outlined,
+                size: isSmallScreen ? 22 : 24,
+              ),
+            ),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _selectedIndex == 1
+                    ? AppTheme.primaryColor.withOpacity(0.1)
+                    : Colors.transparent,
+              ),
+              child: Badge(
+                  isLabelVisible: _selectedIndex != 1,
+                  label: const Text('3'),
+                  backgroundColor: Colors.red,
+                  child: Image.asset(
+                    'assets/icons/rv.png',
+                    width: isSmallScreen ? 22 : 24,
+                    height: isSmallScreen ? 22 : 24,
+                    color: _selectedIndex == 1
+                        ? AppTheme.primaryColor
+                        : AppTheme.greyColor,
+                  )),
+            ),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _selectedIndex == 2
+                    ? AppTheme.primaryColor.withOpacity(0.1)
+                    : Colors.transparent,
+              ),
+              child: Badge(
+                  isLabelVisible: _selectedIndex != 2,
+                  label: const Text('3'),
+                  backgroundColor: Colors.red,
+                  child: Image.asset(
+                    'assets/icons/sms.png',
+                    width: isSmallScreen ? 22 : 24,
+                    height: isSmallScreen ? 22 : 24,
+                    color: _selectedIndex == 1
+                        ? AppTheme.primaryColor
+                        : AppTheme.greyColor,
+                  )),
+            ),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _selectedIndex == 3
+                    ? AppTheme.primaryColor.withOpacity(0.1)
+                    : Colors.transparent,
+              ),
+              child: Image.asset(
+                'assets/icons/app.png', // Si c'est un PNG, utilisez Image.asset au lieu de SvgPicture.asset
+                width: isSmallScreen ? 22 : 24,
+                height: isSmallScreen ? 22 : 24,
+                color: _selectedIndex == 3
+                    ? AppTheme.primaryColor
+                    : AppTheme.greyColor,
+              ),
+            ),
+            label: '',
+          ),
+        ],
+        onTap: _onItemTapped,
       ),
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      elevation: 8,
-      iconSize: isSmallScreen ? 20 : 24,
-      items: [
-        BottomNavigationBarItem(
-          icon: Icon(
-            Icons.home_outlined,
-            size: isSmallScreen ? 20 : 24,
-          ),
-          activeIcon: Icon(
-            Icons.home,
-            size: isSmallScreen ? 20 : 24,
-          ),
-          label: 'Accueil',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(
-            Icons.calendar_today_outlined,
-            size: isSmallScreen ? 20 : 24,
-          ),
-          activeIcon: Icon(
-            Icons.calendar_today,
-            size: isSmallScreen ? 20 : 24,
-          ),
-          label: 'Rendez-vous',
-        ),
-        BottomNavigationBarItem(
-          icon: Badge(
-            label: const Text('3'),
-            backgroundColor: Colors.red,
-            child: Icon(
-              Icons.chat_bubble_outline,
-              size: isSmallScreen ? 20 : 24,
-            ),
-          ),
-          activeIcon: Badge(
-            label: const Text('3'),
-            backgroundColor: Colors.red,
-            child: Icon(
-              Icons.chat_bubble,
-              size: isSmallScreen ? 20 : 24,
-            ),
-          ),
-          label: 'Messages',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(
-            Icons.person_outline,
-            size: isSmallScreen ? 20 : 24,
-          ),
-          activeIcon: Icon(
-            Icons.person,
-            size: isSmallScreen ? 20 : 24,
-          ),
-          label: 'Profil',
-        ),
-      ],
-      onTap: _onItemTapped,
     );
   }
 
-  // TON CODE EXISTANT POUR LES AUTRES FONCTIONS...
-  // NE CHANGE PAS LES FONCTIONS SUIVANTES :
-
+// Modifiez _buildHeader pour ajouter un badge de santé
   Widget _buildHeader(BuildContext context, double screenWidth) {
     final isSmallScreen = screenWidth < 360;
 
@@ -225,56 +298,137 @@ class _HomePageState extends State<HomePage> {
         final userProfile = authProvider.userProfile;
         final userName = userProfile?.fullName.isNotEmpty == true
             ? userProfile!.fullName.split(' ').first
-            : widget.userName; // MODIFIÉ
+            : widget.userName;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                // Photo de profil utilisateur
-                Container(
-                  width: isSmallScreen ? 42 : 48,
-                  height: isSmallScreen ? 42 : 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.primaryColor.withOpacity(0.1),
-                  ),
-                  child: ClipOval(
-                    child: Icon(
-                      Icons.person,
-                      color: AppTheme.primaryColor,
-                      size: isSmallScreen ? 20 : 24,
+                // Photo de profil avec badge de santé
+                Stack(
+                  children: [
+                    Container(
+                      width: isSmallScreen ? 52 : 58,
+                      height: isSmallScreen ? 52 : 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppTheme.primaryGradient,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          color: Colors.white,
+                          child: ClipOval(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.primaryGradient,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: isSmallScreen ? 26 : 30,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: isSmallScreen ? 18 : 20,
+                        height: isSmallScreen ? 18 : 20,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: isSmallScreen ? 8 : 12),
+
+                SizedBox(width: isSmallScreen ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bonjour, $userName',
+                        'Bonjour, $userName 👋',
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 16 : 18,
+                          fontSize: isSmallScreen ? 18 : 20,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        'Comment allez-vous aujourd\'hui ?',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          color: AppTheme.greyColor,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      SizedBox(height: isSmallScreen ? 2 : 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 8 : 10,
+                              vertical: isSmallScreen ? 2 : 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.successColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.health_and_safety,
+                                  size: isSmallScreen ? 12 : 14,
+                                  color: AppTheme.successColor,
+                                ),
+                                SizedBox(width: isSmallScreen ? 4 : 6),
+                                Text(
+                                  'Santé excellente',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 10 : 12,
+                                    color: AppTheme.successColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: isSmallScreen ? 6 : 8),
+                          Text(
+                            '${DateTime.now().day} ${_getMonthName(DateTime.now().month)}',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 10 : 12,
+                              color: AppTheme.greyColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+
                 badges.Badge(
                   position: badges.BadgePosition.topEnd(top: -5, end: -5),
                   badgeContent: Text(
@@ -292,26 +446,32 @@ class _HomePageState extends State<HomePage> {
                       vertical: isSmallScreen ? 1 : 2,
                     ),
                   ),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.notifications_outlined,
-                      size: isSmallScreen ? 22 : 24,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.lightGrey,
                     ),
-                    color: AppTheme.textColor,
-                    onPressed: () {
-                      // Naviguer vers les notifications
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(
-                      minWidth: isSmallScreen ? 36 : 40,
-                      minHeight: isSmallScreen ? 36 : 40,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        size: isSmallScreen ? 22 : 24,
+                        color: AppTheme.textColor,
+                      ),
+                      onPressed: () {},
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(
+                        minWidth: isSmallScreen ? 40 : 44,
+                        minHeight: isSmallScreen ? 40 : 44,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
+
             SizedBox(height: screenWidth * 0.04),
-            // Barre de recherche
+
+            // Barre de recherche améliorée
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -323,18 +483,29 @@ class _HomePageState extends State<HomePage> {
               },
               child: Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 12 : 16,
-                  vertical: isSmallScreen ? 10 : 12,
+                  horizontal: isSmallScreen ? 16 : 20,
+                  vertical: isSmallScreen ? 14 : 16,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                  border: Border.all(color: AppTheme.lightGrey),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white,
+                      Colors.white,
+                      AppTheme.lightGrey.withOpacity(0.3),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
+                  border: Border.all(
+                    color: AppTheme.lightGrey,
+                    width: 1.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -342,25 +513,32 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Icon(
                       Icons.search,
-                      color: AppTheme.greyColor,
-                      size: isSmallScreen ? 18 : 20,
+                      color: AppTheme.primaryColor,
+                      size: isSmallScreen ? 20 : 24,
                     ),
-                    SizedBox(width: isSmallScreen ? 8 : 12),
+                    SizedBox(width: isSmallScreen ? 12 : 16),
                     Expanded(
                       child: Text(
                         'Rechercher un médecin, une spécialité...',
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 13 : 14,
+                          fontSize: isSmallScreen ? 14 : 16,
                           color: AppTheme.greyColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Icon(
-                      Icons.tune,
-                      color: AppTheme.greyColor,
-                      size: isSmallScreen ? 18 : 20,
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.filter_list,
+                        color: AppTheme.primaryColor,
+                        size: isSmallScreen ? 18 : 20,
+                      ),
                     ),
                   ],
                 ),
@@ -370,6 +548,24 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan',
+      'Fév',
+      'Mar',
+      'Avr',
+      'Mai',
+      'Juin',
+      'Juil',
+      'Août',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Déc'
+    ];
+    return months[month - 1];
   }
 
   Widget _buildPromotionCarousel(double screenWidth) {
@@ -1185,6 +1381,246 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions(double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+
+    final List<Map<String, dynamic>> quickActions = [
+      {
+        'icon': Icons.emergency,
+        'label': 'Urgences',
+        'color': AppTheme.dangerColor,
+        'onTap': () {},
+      },
+      {
+        'icon': Icons.medication,
+        'label': 'Ordonnances',
+        'color': AppTheme.successColor,
+        'onTap': () {},
+      },
+      {
+        'icon': Icons.health_and_safety,
+        'label': 'Suivi santé',
+        'color': AppTheme.infoColor,
+        'onTap': () {},
+      },
+      {
+        'icon': Icons.local_hospital,
+        'label': 'Hôpitaux',
+        'color': AppTheme.accentColor,
+        'onTap': () {},
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Accès rapide',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 16 : 18,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textColor,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: isSmallScreen ? 8 : 12,
+            mainAxisSpacing: isSmallScreen ? 8 : 12,
+            childAspectRatio: 0.8,
+          ),
+          itemCount: quickActions.length,
+          itemBuilder: (context, index) {
+            final action = quickActions[index];
+            return GestureDetector(
+              onTap: action['onTap'] as VoidCallback,
+              child: Column(
+                children: [
+                  Container(
+                    width: isSmallScreen ? 50 : 60,
+                    height: isSmallScreen ? 50 : 60,
+                    decoration: BoxDecoration(
+                      color: action['color'] as Color,
+                      borderRadius:
+                          BorderRadius.circular(isSmallScreen ? 12 : 16),
+                      gradient: LinearGradient(
+                        colors: [
+                          (action['color'] as Color).withOpacity(0.9),
+                          (action['color'] as Color).withOpacity(0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (action['color'] as Color).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      action['icon'] as IconData,
+                      color: Colors.white,
+                      size: isSmallScreen ? 24 : 28,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 6 : 8),
+                  Text(
+                    action['label'] as String,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 10 : 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textColor,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthTips(double screenWidth) {
+    final isSmallScreen = screenWidth < 360;
+
+    final List<Map<String, dynamic>> tips = [
+      {
+        'title': 'Hydratation quotidienne',
+        'description': 'Buvez au moins 2L d\'eau par jour',
+        'icon': Icons.water_drop,
+        'color': Colors.blue,
+      },
+      {
+        'title': 'Marche quotidienne',
+        'description': '30 minutes de marche par jour',
+        'icon': Icons.directions_walk,
+        'color': Colors.green,
+      },
+      {
+        'title': 'Sommeil de qualité',
+        'description': '7-8 heures de sommeil par nuit',
+        'icon': Icons.nightlight_round,
+        'color': Colors.purple,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Conseils santé',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 16 : 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textColor,
+              ),
+            ),
+            TextButton(
+              onPressed: () {},
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Voir plus',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 13 : 14,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        ...tips.map((tip) {
+          return Container(
+            margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 12),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: isSmallScreen ? 40 : 48,
+                  height: isSmallScreen ? 40 : 48,
+                  decoration: BoxDecoration(
+                    color: tip['color'] as Color,
+                    borderRadius:
+                        BorderRadius.circular(isSmallScreen ? 10 : 12),
+                    gradient: LinearGradient(
+                      colors: [
+                        (tip['color'] as Color).withOpacity(0.9),
+                        (tip['color'] as Color).withOpacity(0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Icon(
+                    tip['icon'] as IconData,
+                    color: Colors.white,
+                    size: isSmallScreen ? 20 : 24,
+                  ),
+                ),
+                SizedBox(width: isSmallScreen ? 12 : 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tip['title'] as String,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textColor,
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
+                      Text(
+                        tip['description'] as String,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: AppTheme.greyColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: AppTheme.greyColor,
+                  size: isSmallScreen ? 20 : 24,
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ],
     );
   }

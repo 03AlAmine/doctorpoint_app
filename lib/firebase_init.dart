@@ -3,10 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirebaseInitializer {
   static Future<void> initializeDatabase() async {
     
-    // Créer la collection doctors si elle n'existe pas
-    // (Firestore crée automatiquement les collections)
-    
-    print('Initialisation Firebase terminée');
+  //  print('Initialisation Firebase terminée');
   }
 
   static Future<void> addSampleDoctors() async {
@@ -36,13 +33,12 @@ class FirebaseInitializer {
         'email': 'sarah.johnson@hospital.com',
         'createdAt': FieldValue.serverTimestamp(),
       },
-      // Ajoutez d'autres médecins d'exemple ici
     ];
 
     for (var doctor in sampleDoctors) {
       await db.collection('doctors').add(doctor);
     }
     
-    print('Doctors d\'exemple ajoutés');
+   // print('Doctors d\'exemple ajoutés');
   }
 }

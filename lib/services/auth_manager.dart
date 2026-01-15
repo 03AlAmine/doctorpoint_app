@@ -70,9 +70,6 @@ class AuthManager {
    * ============================================================ */
   Future<void> signOut() async {
     try {
-      // Sauvegarder l'email avant déconnexion
-      final currentEmail = _auth.currentUser?.email;
-
       // Déconnexion Firebase
       await _auth.signOut();
 
@@ -82,7 +79,7 @@ class AuthManager {
       // Attendre que Firebase mette à jour l'état
       await Future.delayed(const Duration(milliseconds: 500));
 
-      print('✅ Déconnexion réussie pour: $currentEmail');
+      // print('✅ Déconnexion réussie pour: $currentEmail');
     } catch (e) {
       print('❌ Erreur déconnexion: $e');
 

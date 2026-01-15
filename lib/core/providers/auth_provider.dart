@@ -128,7 +128,7 @@ class AuthProvider extends ChangeNotifier {
   // MODIFIEZ la méthode signOut
   Future<void> signOut() async {
     try {
-      print('🔄 AuthProvider signOut() appelé');
+     // print('🔄 AuthProvider signOut() appelé');
 
       await _authService.signOut();
 
@@ -138,7 +138,7 @@ class AuthProvider extends ChangeNotifier {
 
       await Future.delayed(const Duration(milliseconds: 300));
 
-      print('✅ AuthProvider signOut() terminé avec succès');
+     // print('✅ AuthProvider signOut() terminé avec succès');
     } catch (e) {
       print('❌ Erreur AuthProvider signOut(): $e');
       

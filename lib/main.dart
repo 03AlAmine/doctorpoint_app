@@ -115,7 +115,7 @@ class _RootState extends State<Root> {
 
         // Pas d'utilisateur connecté → Page de connexion
         if (authSnapshot.data == null) {
-          return const LoginPage();
+          return const LoginPage(); // PREMIÈRE VÉRIFICATION
         }
 
         final userId = authSnapshot.data!.uid;
@@ -123,6 +123,17 @@ class _RootState extends State<Root> {
         // Ajouter un délai pour éviter les conflits
         if (_isCheckingAuth) {
           return const SplashScreen();
+        }
+        if (authSnapshot.data == null) {
+          // DEUXIÈME VÉRIFICATION - DOUBLON!
+          // S'assurer que nous sommes vraiment sur la page de login
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ModalRoute.of(context)?.settings.name != '/login') {
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/login', (route) => false);
+            }
+          });
+          return const LoginPage();
         }
 
         return FutureBuilder<DocumentSnapshot>(

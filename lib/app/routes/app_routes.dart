@@ -15,7 +15,7 @@ import 'package:doctorpoint/presentation/pages/patient/search_page.dart';
 import 'package:doctorpoint/presentation/pages/patient/appointments_page.dart';
 import 'package:doctorpoint/presentation/pages/onboarding_page.dart';
 import 'package:doctorpoint/presentation/pages/splash_page.dart';
-import 'package:doctorpoint/presentation/pages/profile/patient_profile_page.dart';
+import 'package:doctorpoint/presentation/pages/patient/patient_profile_page.dart';
 
 // Pages Doctor
 import 'package:doctorpoint/presentation/pages/doctor/doctor_dashboard.dart';

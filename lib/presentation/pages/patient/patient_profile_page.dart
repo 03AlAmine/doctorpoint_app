@@ -1,5 +1,6 @@
 // lib/presentation/pages/profile/patient_profile_page.dart
 import 'dart:io';
+import 'package:doctorpoint/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -139,110 +140,100 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     }
   }
 
-// Dans patient_profile_page.dart - Méthode _saveProfile
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Vérifier que le patient existe
-      if (_patient == null || _patient!.uid.isEmpty) {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser == null) {
-          throw Exception('Utilisateur non connecté');
-        }
-
-        // Créer un patient avec l'ID de l'utilisateur
-        _patient = Patient(
-          id: currentUser.uid,
-          uid: currentUser.uid,
-          email: currentUser.email ?? '',
-          fullName: currentUser.displayName ?? '',
-          phone: currentUser.phoneNumber ?? '',
-          profileCompleted: false,
-          emailVerified: currentUser.emailVerified,
-          createdAt: DateTime.now(),
-        );
+      // Vérifier utilisateur
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('Utilisateur non connecté');
       }
 
-      // Upload photo si nouvelle
+      // Upload photo si sélectionnée - CORRECTION ICI
       if (_selectedImage != null) {
-        _imageUrl =
-            await _patientService.uploadProfilePhoto(_selectedImage!.path as File);
+        try {
+          _imageUrl = await _patientService.uploadProfilePhoto(_selectedImage!);
+        } catch (e) {
+          print('Erreur upload photo: $e');
+          _showErrorSnackbar('Erreur lors de l\'upload de la photo');
+        }
       }
 
-      // Créer ou mettre à jour le patient
+      // Créer l'objet Patient
       final patient = Patient(
-        id: _patient!.id, // Toujours utiliser l'ID existant
-        uid: _patient!.uid,
+        id: _patient?.id ?? currentUser.uid,
+        uid: currentUser.uid,
         email: _emailController.text.trim().isNotEmpty
             ? _emailController.text.trim()
-            : _patient!.email,
+            : currentUser.email ?? '',
         fullName: _fullNameController.text.trim().isNotEmpty
             ? _fullNameController.text.trim()
-            : _patient!.fullName,
+            : currentUser.displayName ?? '',
         phone: _phoneController.text.trim().isNotEmpty
             ? _phoneController.text.trim()
-            : _patient!.phone,
+            : currentUser.phoneNumber ?? '',
         gender: _selectedGender,
         birthDate: _birthDateController.text.isNotEmpty
             ? DateFormat('dd/MM/yyyy').parse(_birthDateController.text)
-            : _patient!.birthDate,
+            : _patient?.birthDate,
         address: _addressController.text.trim().isNotEmpty
             ? _addressController.text.trim()
-            : _patient!.address,
+            : _patient?.address,
         city: _cityController.text.trim().isNotEmpty
             ? _cityController.text.trim()
-            : _patient!.city,
+            : _patient?.city,
         postalCode: _postalCodeController.text.trim().isNotEmpty
             ? _postalCodeController.text.trim()
-            : _patient!.postalCode,
+            : _patient?.postalCode,
         country: _countryController.text.trim().isNotEmpty
             ? _countryController.text.trim()
-            : _patient!.country ?? 'Sénégal',
+            : _patient?.country ?? 'Sénégal',
         bloodGroup: _bloodGroupController.text.trim().isNotEmpty
             ? _bloodGroupController.text.trim()
-            : _patient!.bloodGroup,
-        allergies: _allergies.isNotEmpty ? _allergies : _patient!.allergies,
+            : _patient?.bloodGroup,
+        allergies: _allergies.isNotEmpty ? _allergies : _patient?.allergies,
         chronicDiseases: _chronicDiseases.isNotEmpty
             ? _chronicDiseases
-            : _patient!.chronicDiseases,
+            : _patient?.chronicDiseases,
         currentMedications: _currentMedications.isNotEmpty
             ? _currentMedications
-            : _patient!.currentMedications,
-        surgeries: _surgeries.isNotEmpty ? _surgeries : _patient!.surgeries,
-        vaccines: _vaccines.isNotEmpty ? _vaccines : _patient!.vaccines,
+            : _patient?.currentMedications,
+        surgeries: _surgeries.isNotEmpty ? _surgeries : _patient?.surgeries,
+        vaccines: _vaccines.isNotEmpty ? _vaccines : _patient?.vaccines,
         emergencyContactName: _emergencyNameController.text.trim().isNotEmpty
             ? _emergencyNameController.text.trim()
-            : _patient!.emergencyContactName,
+            : _patient?.emergencyContactName,
         emergencyContactPhone: _emergencyPhoneController.text.trim().isNotEmpty
             ? _emergencyPhoneController.text.trim()
-            : _patient!.emergencyContactPhone,
+            : _patient?.emergencyContactPhone,
         emergencyContactRelation:
             _emergencyRelationController.text.trim().isNotEmpty
                 ? _emergencyRelationController.text.trim()
-                : _patient!.emergencyContactRelation,
-        photoUrl: _imageUrl ?? _patient!.photoUrl,
+                : _patient?.emergencyContactRelation,
+        photoUrl: _imageUrl ?? _patient?.photoUrl,
         height: _heightController.text.isNotEmpty
             ? double.tryParse(_heightController.text)
-            : _patient!.height,
+            : _patient?.height,
         weight: _weightController.text.isNotEmpty
             ? double.tryParse(_weightController.text)
-            : _patient!.weight,
-        smoker: _isSmoker ?? _patient!.smoker,
-        alcoholConsumer: _isAlcoholConsumer ?? _patient!.alcoholConsumer,
+            : _patient?.weight,
+        smoker: _isSmoker ?? _patient?.smoker,
+        alcoholConsumer: _isAlcoholConsumer ?? _patient?.alcoholConsumer,
         occupation: _occupationController.text.trim().isNotEmpty
             ? _occupationController.text.trim()
-            : _patient!.occupation,
-        maritalStatus: _selectedMaritalStatus ?? _patient!.maritalStatus,
-        numberOfChildren: _numberOfChildren ?? _patient!.numberOfChildren,
+            : _patient?.occupation,
+        maritalStatus: _selectedMaritalStatus ?? _patient?.maritalStatus,
+        numberOfChildren: _numberOfChildren ?? _patient?.numberOfChildren,
         familyMedicalHistory: _familyHistoryController.text.trim().isNotEmpty
             ? _familyHistoryController.text.trim()
-            : _patient!.familyMedicalHistory,
-        profileCompleted: true, // Marquer comme complété
-        emailVerified: _patient!.emailVerified,
-        createdAt: _patient!.createdAt,
+            : _patient?.familyMedicalHistory,
+        profileCompleted: true,
+        emailVerified: currentUser.emailVerified,
+        createdAt: _patient?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       await _patientService.savePatientProfile(patient);
@@ -252,9 +243,10 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         _isEditing = false;
       });
 
-      _showSuccessSnackbar('Profil mis à jour avec succès');
+      _showSuccessSnackbar('✅ Profil mis à jour avec succès');
     } catch (e) {
-      _showErrorSnackbar('Erreur: ${e.toString()}');
+      print('Erreur sauvegarde: $e');
+      _showErrorSnackbar('❌ Erreur: ${e.toString()}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -280,6 +272,378 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     );
   }
 
+  Future<void> _performLogout() async {
+    try {
+      // Fermer d'abord le modal bottom sheet
+      Navigator.of(context, rootNavigator: true).pop();
+
+      // Attendre un peu pour que le modal soit complètement fermé
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Montrer un indicateur de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const CircularProgressIndicator(
+              color: AppTheme.primaryColor,
+            ),
+          ),
+        ),
+      );
+
+      // Effectuer la déconnexion
+      final authService = AuthService();
+      await authService.signOut();
+
+      // Fermer l'indicateur de chargement
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Rediriger vers la page de connexion
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      // Fermer l'indicateur de chargement en cas d'erreur
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Afficher l'erreur
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur de déconnexion: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
+  }
+  // ============================ NOUVEAUX WIDGETS ============================
+
+  Widget _buildStatsRow() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem('Rendez-vous', '0', Icons.calendar_today),
+          _buildStatItem('Documents', '0', Icons.description),
+          _buildStatItem('Messages', '0', Icons.message),
+          _buildStatItem(
+              'Infos santé',
+              '${_allergies.length + _chronicDiseases.length + _currentMedications.length}',
+              Icons.health_and_safety),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: AppTheme.primaryColor, size: 20),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: AppTheme.textColor,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.greyColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthSummary() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '📊 Résumé de santé',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // IMC avec indicateur visuel
+          if (_patient?.bmi != null) _buildBmiIndicator(),
+          if (_patient?.bmi != null) const SizedBox(height: 12),
+
+          // Informations clés
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              if (_allergies.isNotEmpty)
+                _buildSummaryItem(
+                  'Allergies',
+                  _allergies.length.toString(),
+                  Icons.warning,
+                  Colors.orange,
+                ),
+              if (_chronicDiseases.isNotEmpty)
+                _buildSummaryItem(
+                  'Maladies',
+                  _chronicDiseases.length.toString(),
+                  Icons.medical_services,
+                  Colors.red,
+                ),
+              if (_currentMedications.isNotEmpty)
+                _buildSummaryItem(
+                  'Médicaments',
+                  _currentMedications.length.toString(),
+                  Icons.medication,
+                  Colors.blue,
+                ),
+              if (_vaccines.isNotEmpty)
+                _buildSummaryItem(
+                  'Vaccins',
+                  _vaccines.length.toString(),
+                  Icons.vaccines,
+                  Colors.green,
+                ),
+              if (_surgeries.isNotEmpty)
+                _buildSummaryItem(
+                  'Interventions',
+                  _surgeries.length.toString(),
+                  Icons.science,
+                  Colors.purple,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBmiIndicator() {
+    final bmi = _patient!.bmi!;
+    final category = _patient!.bmiCategory;
+
+    Color getColor() {
+      if (bmi < 18.5) return Colors.blue;
+      if (bmi < 25) return Colors.green;
+      if (bmi < 30) return Colors.orange;
+      return Colors.red;
+    }
+
+    double getProgress() {
+      if (bmi < 18.5) return bmi / 18.5 * 0.25;
+      if (bmi < 25) return 0.25 + (bmi - 18.5) / (25 - 18.5) * 0.5;
+      if (bmi < 30) return 0.75 + (bmi - 25) / (30 - 25) * 0.2;
+      return 0.95 + (bmi - 30) / 20 * 0.05;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: getColor().withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: getColor()),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  'Indice de Masse Corporelle',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: getColor(),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: getColor(),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _getShortCategory(category), // Utiliser version courte
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10, // Taille réduite
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${bmi.toStringAsFixed(1)} kg/m²',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: getProgress(),
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(getColor()),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Flexible(
+                child: Text(
+                  'Maigreur',
+                  style: TextStyle(fontSize: 10),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  'Normal',
+                  style: TextStyle(fontSize: 10),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  'Surpoids',
+                  style: TextStyle(fontSize: 10),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  'Obésité',
+                  style: TextStyle(fontSize: 10),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+// Ajouter cette méthode pour les catégories courtes
+  String _getShortCategory(String category) {
+    switch (category) {
+      case 'Insuffisance pondérale':
+        return 'Maigreur';
+      case 'Poids normal':
+        return 'Normal';
+      case 'Surpoids':
+        return 'Surpoids';
+      case 'Obésité':
+        return 'Obésité';
+      default:
+        return category;
+    }
+  }
+
+  Widget _buildSummaryItem(
+      String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            '$value $label',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================ WIDGETS EXISTANTS AMÉLIORÉS ============================
+
   Widget _buildProfileHeader() {
     return Column(
       children: [
@@ -291,48 +655,76 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                border: Border.all(
-                  color: AppTheme.primaryColor,
-                  width: 3,
-                ),
+                gradient: AppTheme.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-              child: ClipOval(
-                child: _selectedImage != null
-                    ? Image.file(_selectedImage!, fit: BoxFit.cover)
-                    : _imageUrl != null && _imageUrl!.isNotEmpty
-                        ? Image.network(_imageUrl!, fit: BoxFit.cover)
-                        : Icon(
-                            Icons.person,
-                            size: 60,
-                            color: AppTheme.primaryColor,
-                          ),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: ClipOval(
+                  child: _selectedImage != null
+                      ? Image.file(_selectedImage!,
+                          fit: BoxFit.cover, width: 114, height: 114)
+                      : _imageUrl != null && _imageUrl!.isNotEmpty
+                          ? Image.network(_imageUrl!,
+                              fit: BoxFit.cover, width: 114, height: 114)
+                          : Container(
+                              color: Colors.white,
+                              child: Icon(
+                                Icons.person,
+                                size: 60,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                ),
               ),
             ),
             if (_isEditing)
               Container(
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppTheme.primaryColor,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: Colors.white, width: 3),
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.camera_alt,
-                      color: Colors.white, size: 20),
+                      color: Colors.white, size: 16),
                   onPressed: _pickImage,
+                  padding: EdgeInsets.zero,
                 ),
               ),
           ],
         ),
         const SizedBox(height: 16),
 
-        // Nom
-        Text(
-          _patient?.fullName ?? 'Patient',
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+        // Nom avec badge vérifié
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _patient?.fullName ?? 'Patient',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_patient?.emailVerified == true)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(
+                  Icons.verified,
+                  color: Colors.blue,
+                  size: 20,
+                ),
+              ),
+          ],
         ),
 
         // Email
@@ -348,43 +740,37 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             ),
           ),
 
-        // Âge et Genre
+        // Âge et Genre avec badge
         if (_patient?.age != null && _patient!.age > 0 ||
             _patient?.gender != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_patient?.age != null && _patient!.age > 0)
-                  Text(
-                    '${_patient!.age} ans',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                if (_patient?.age != null &&
-                    _patient!.age > 0 &&
-                    _patient?.gender != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      '•',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline,
+                          size: 14, color: AppTheme.primaryColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_patient?.age ?? ''} ${_patient?.age != null ? 'ans' : ''}${_patient?.gender != null && _patient!.gender!.isNotEmpty ? ' • ${_patient!.gender}' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                if (_patient?.gender != null)
-                  Text(
-                    _patient!.gender!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+                ),
               ],
             ),
           ),
@@ -392,7 +778,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         // Localisation
         if (_patient?.city != null || _patient?.country != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -412,95 +798,61 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             ),
           ),
 
-        // Groupe sanguin
-        if (_patient?.bloodGroup != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.red.shade200, width: 1),
+        // Badges d'information
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            if (_patient?.bloodGroup != null)
+              _buildInfoBadge(
+                'Groupe ${_patient!.bloodGroup!}',
+                Icons.bloodtype,
+                Colors.red,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bloodtype, size: 14, color: Colors.red),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Groupe ${_patient!.bloodGroup!}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.red.shade700,
-                    ),
-                  ),
-                ],
+            if (_patient?.occupation != null &&
+                _patient!.occupation!.isNotEmpty)
+              _buildInfoBadge(
+                _patient!.occupation!,
+                Icons.work,
+                Colors.blue,
               ),
-            ),
-          ),
-
-        // Occupation
-        if (_patient?.occupation != null && _patient!.occupation!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.blue.shade200, width: 1),
+            if (_patient?.profileCompleted == true)
+              _buildInfoBadge(
+                'Profil complet',
+                Icons.check_circle,
+                Colors.green,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.work, size: 14, color: Colors.blue),
-                  const SizedBox(width: 4),
-                  Text(
-                    _patient!.occupation!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // Statut de vérification email
-        if (_patient != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color:
-                        _patient!.emailVerified ? Colors.green : Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _patient!.emailVerified
-                      ? 'Email vérifié'
-                      : 'Email non vérifié',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                        _patient!.emailVerified ? Colors.green : Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
+        ),
       ],
+    );
+  }
+
+  Widget _buildInfoBadge(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -527,10 +879,10 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.orange.shade200),
       ),
       child: Column(
@@ -579,21 +931,24 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                 ),
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: TextButton(
+            child: ElevatedButton(
               onPressed: () {
                 setState(() => _isEditing = true);
               },
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange.shade100,
+                foregroundColor: Colors.orange.shade800,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Text(
+              child: const Text(
                 'Compléter maintenant',
                 style: TextStyle(
-                  color: Colors.orange.shade800,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -605,396 +960,376 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   }
 
   Widget _buildHealthInfoSection() {
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '🏥 Informations Médicales',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textColor,
+                ),
+              ),
+              if (!_isEditing)
+                IconButton(
+                  icon:
+                      Icon(Icons.edit, size: 20, color: AppTheme.primaryColor),
+                  onPressed: () => setState(() => _isEditing = true),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Groupe sanguin
+          if (_patient?.bloodGroup != null)
+            _buildInfoRow(
+              icon: Icons.bloodtype,
+              label: 'Groupe sanguin',
+              value: _patient!.bloodGroup!,
+              color: Colors.red,
+            ),
+
+          // Taille et poids
+          if (_patient?.height != null || _patient?.weight != null)
+            _buildInfoRow(
+              icon: Icons.monitor_weight,
+              label: 'Taille / Poids',
+              value:
+                  '${_patient?.height?.toStringAsFixed(0) ?? '--'} cm / ${_patient?.weight?.toStringAsFixed(1) ?? '--'} kg',
+              color: Colors.blue,
+            ),
+
+          // Mode de vie
+          if (_isSmoker != null || _isAlcoholConsumer != null) const Divider(),
+
+          if (_isSmoker != null)
+            _buildInfoRow(
+              icon: Icons.smoking_rooms,
+              label: 'Fumeur',
+              value: _isSmoker! ? 'Oui' : 'Non',
+              color: _isSmoker! ? Colors.red : Colors.green,
+            ),
+
+          if (_isAlcoholConsumer != null)
+            _buildInfoRow(
+              icon: Icons.local_drink,
+              label: 'Consommation d\'alcool',
+              value: _isAlcoholConsumer! ? 'Oui' : 'Non',
+              color: _isAlcoholConsumer! ? Colors.orange : Colors.green,
+            ),
+
+          // Allergies
+          if (_allergies.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Informations Médicales',
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Allergies',
                   style: TextStyle(
-                    fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppTheme.textColor,
                   ),
                 ),
-                if (!_isEditing)
-                  IconButton(
-                    icon: Icon(Icons.edit,
-                        size: 20, color: AppTheme.primaryColor),
-                    onPressed: () => setState(() => _isEditing = true),
-                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _allergies
+                      .map((allergy) => Chip(
+                            label: Text(allergy),
+                            backgroundColor: Colors.red.shade50,
+                            labelStyle: TextStyle(color: Colors.red.shade800),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ))
+                      .toList(),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
 
-            // Groupe sanguin
-            if (_patient?.bloodGroup != null)
-              _buildInfoRow(
-                icon: Icons.bloodtype,
-                label: 'Groupe sanguin',
-                value: _patient!.bloodGroup!,
-                color: Colors.red,
-              ),
-
-            // Taille et poids
-            if (_patient?.height != null || _patient?.weight != null)
-              _buildInfoRow(
-                icon: Icons.monitor_weight,
-                label: 'Taille / Poids',
-                value:
-                    '${_patient?.height?.toStringAsFixed(0) ?? '--'} cm / ${_patient?.weight?.toStringAsFixed(1) ?? '--'} kg',
-                color: Colors.blue,
-              ),
-
-            // IMC
-            if (_patient?.bmi != null)
-              _buildInfoRow(
-                icon: Icons.scale,
-                label: 'IMC',
-                value:
-                    '${_patient!.bmi!.toStringAsFixed(1)} (${_patient!.bmiCategory})',
-                color: _patient!.bmiCategory == 'Poids normal'
-                    ? Colors.green
-                    : Colors.orange,
-              ),
-
-            // Mode de vie
-            if (_isSmoker != null || _isAlcoholConsumer != null)
-              const Divider(),
-
-            if (_isSmoker != null)
-              _buildInfoRow(
-                icon: Icons.smoking_rooms,
-                label: 'Fumeur',
-                value: _isSmoker! ? 'Oui' : 'Non',
-                color: _isSmoker! ? Colors.red : Colors.green,
-              ),
-
-            if (_isAlcoholConsumer != null)
-              _buildInfoRow(
-                icon: Icons.local_drink,
-                label: 'Consommation d\'alcool',
-                value: _isAlcoholConsumer! ? 'Oui' : 'Non',
-                color: _isAlcoholConsumer! ? Colors.orange : Colors.green,
-              ),
-
-            // Allergies
-            if (_allergies.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Allergies',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+          // Maladies chroniques
+          if (_chronicDiseases.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Maladies chroniques',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppTheme.textColor,
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: _allergies
-                        .map((allergy) => Chip(
-                              label: Text(allergy),
-                              backgroundColor: Colors.red.shade50,
-                              labelStyle: TextStyle(color: Colors.red.shade800),
-                            ))
-                        .toList(),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _chronicDiseases
+                      .map((disease) => Chip(
+                            label: Text(disease),
+                            backgroundColor: Colors.orange.shade50,
+                            labelStyle:
+                                TextStyle(color: Colors.orange.shade800),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ],
+            ),
 
-            // Maladies chroniques
-            if (_chronicDiseases.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Maladies chroniques',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+          // Médicaments actuels
+          if (_currentMedications.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Médicaments actuels',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppTheme.textColor,
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: _chronicDiseases
-                        .map((disease) => Chip(
-                              label: Text(disease),
-                              backgroundColor: Colors.orange.shade50,
-                              labelStyle:
-                                  TextStyle(color: Colors.orange.shade800),
-                            ))
-                        .toList(),
-                  ),
-                ],
-              ),
-
-            // Médicaments actuels
-            if (_currentMedications.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Médicaments actuels',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: _currentMedications
-                        .map((med) => Chip(
-                              label: Text(med),
-                              backgroundColor: Colors.blue.shade50,
-                              labelStyle:
-                                  TextStyle(color: Colors.blue.shade800),
-                            ))
-                        .toList(),
-                  ),
-                ],
-              ),
-
-            // Antécédents chirurgicaux
-            if (_surgeries.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Antécédents chirurgicaux',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._surgeries.map((surgery) => ListTile(
-                        leading:
-                            Icon(Icons.medical_services, color: Colors.purple),
-                        title: Text(surgery.name),
-                        subtitle: Text(
-                          '${DateFormat('dd/MM/yyyy').format(surgery.date)}${surgery.hospital != null ? ' - ${surgery.hospital}' : ''}',
-                        ),
-                        trailing: _isEditing
-                            ? IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _removeSurgery(surgery),
-                              )
-                            : null,
-                      )),
-                ],
-              ),
-
-            // Vaccins
-            if (_vaccines.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Vaccinations',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._vaccines.map((vaccine) => ListTile(
-                        leading: Icon(Icons.vaccines, color: Colors.green),
-                        title: Text(vaccine.name),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                'Date: ${DateFormat('dd/MM/yyyy').format(vaccine.date)}'),
-                            if (vaccine.nextDoseDate != null)
-                              Text(
-                                  'Prochaine dose: ${DateFormat('dd/MM/yyyy').format(vaccine.nextDoseDate!)}'),
-                          ],
-                        ),
-                        trailing: _isEditing
-                            ? IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _removeVaccine(vaccine),
-                              )
-                            : null,
-                      )),
-                ],
-              ),
-
-            // Histoire familiale
-            if (_patient?.familyMedicalHistory != null &&
-                _patient!.familyMedicalHistory!.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Histoire médicale familiale',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _patient!.familyMedicalHistory!,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-              ),
-          ],
-        ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _currentMedications
+                      .map((med) => Chip(
+                            label: Text(med),
+                            backgroundColor: Colors.blue.shade50,
+                            labelStyle: TextStyle(color: Colors.blue.shade800),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildPersonalInfoSection() {
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Informations Personnelles',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '👤 Informations Personnelles',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textColor,
             ),
-            const SizedBox(height: 12),
+          ),
+          const SizedBox(height: 12),
 
-            // Statut matrimonial
-            if (_patient?.maritalStatus != null)
-              _buildInfoRow(
-                icon: Icons.family_restroom,
-                label: 'Statut matrimonial',
-                value: _patient!.maritalStatus!,
-                color: Colors.purple,
-              ),
+          // 1. DATE DE NAISSANCE et ÂGE
+          if (_patient?.birthDate != null)
+            _buildInfoRow(
+              icon: Icons.cake,
+              label: 'Date de naissance',
+              value: DateFormat('dd/MM/yyyy').format(_patient!.birthDate!),
+              color: Colors.pink,
+            ),
 
-            // Nombre d'enfants
-            if (_patient?.numberOfChildren != null)
-              _buildInfoRow(
-                icon: Icons.child_care,
-                label: 'Nombre d\'enfants',
-                value: _patient!.numberOfChildren!.toString(),
-                color: Colors.pink,
-              ),
+          // 2. ÂGE (calculé)
+          if (_patient?.age != null && _patient!.age > 0)
+            _buildInfoRow(
+              icon: Icons.calendar_today,
+              label: 'Âge',
+              value: '${_patient!.age} ans',
+              color: Colors.orange,
+            ),
 
-            // Occupation
-            if (_patient?.occupation != null &&
-                _patient!.occupation!.isNotEmpty)
-              _buildInfoRow(
-                icon: Icons.work,
-                label: 'Profession',
-                value: _patient!.occupation!,
-                color: Colors.blue,
-              ),
-          ],
-        ),
+          // 3. GENRE
+          if (_patient?.gender != null)
+            _buildInfoRow(
+              icon: Icons.person_outline,
+              label: 'Genre',
+              value: _patient!.gender!,
+              color: Colors.blue,
+            ),
+
+          // 4. STATUT MATRIMONIAL
+          if (_patient?.maritalStatus != null)
+            _buildInfoRow(
+              icon: Icons.family_restroom,
+              label: 'Statut matrimonial',
+              value: _patient!.maritalStatus!,
+              color: Colors.purple,
+            ),
+
+          // 5. NOMBRE D'ENFANTS
+          if (_patient?.numberOfChildren != null)
+            _buildInfoRow(
+              icon: Icons.child_care,
+              label: 'Nombre d\'enfants',
+              value: _patient!.numberOfChildren!.toString(),
+              color: Colors.pink,
+            ),
+
+          // 6. PROFESSION
+          if (_patient?.occupation != null && _patient!.occupation!.isNotEmpty)
+            _buildInfoRow(
+              icon: Icons.work,
+              label: 'Profession',
+              value: _patient!.occupation!,
+              color: Colors.blue,
+            ),
+
+          // 7. SITUATION FAMILIALE RÉSUMÉE (optionnel)
+          if (_patient?.maritalStatus != null &&
+              _patient?.numberOfChildren != null)
+            _buildInfoRow(
+              icon: Icons.group,
+              label: 'Situation familiale',
+              value:
+                  '${_patient!.maritalStatus!} • ${_patient!.numberOfChildren!} enfant(s)',
+              color: Colors.green,
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildContactInfoSection() {
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Coordonnées',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '📞 Coordonnées',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textColor,
             ),
-            const SizedBox(height: 12),
+          ),
+          const SizedBox(height: 12),
 
-            // Téléphone
+          // Téléphone
+          _buildInfoRow(
+            icon: Icons.phone,
+            label: 'Téléphone',
+            value: _patient?.phone ?? 'Non renseigné',
+            color: AppTheme.primaryColor,
+          ),
+
+          // Email
+          _buildInfoRow(
+            icon: Icons.email,
+            label: 'Email',
+            value: _patient?.email ?? 'Non renseigné',
+            color: Colors.blue,
+          ),
+
+          // Adresse
+          if (_patient?.address != null)
             _buildInfoRow(
-              icon: Icons.phone,
-              label: 'Téléphone',
-              value: _patient?.phone ?? 'Non renseigné',
-              color: AppTheme.primaryColor,
+              icon: Icons.location_on,
+              label: 'Adresse',
+              value:
+                  '${_patient!.address}, ${_patient!.city} ${_patient!.postalCode}',
+              color: Colors.green,
             ),
 
-            // Email
-            _buildInfoRow(
-              icon: Icons.email,
-              label: 'Email',
-              value: _patient?.email ?? 'Non renseigné',
-              color: Colors.blue,
-            ),
-
-            // Adresse
-            if (_patient?.address != null)
-              _buildInfoRow(
-                icon: Icons.location_on,
-                label: 'Adresse',
-                value:
-                    '${_patient!.address}, ${_patient!.city} ${_patient!.postalCode}',
-                color: Colors.green,
-              ),
-
-            // Contact d'urgence
-            if (_patient?.emergencyContactName != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'Contact d\'urgence',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+          // Contact d'urgence
+          if (_patient?.emergencyContactName != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  '🆘 Contact d\'urgence',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppTheme.textColor,
                   ),
-                  const SizedBox(height: 8),
+                ),
+                const SizedBox(height: 8),
+                _buildInfoRow(
+                  icon: Icons.emergency,
+                  label: 'Nom',
+                  value: _patient!.emergencyContactName!,
+                  color: Colors.red,
+                ),
+                if (_patient?.emergencyContactPhone != null)
                   _buildInfoRow(
-                    icon: Icons.emergency,
-                    label: 'Nom',
-                    value: _patient!.emergencyContactName!,
+                    icon: Icons.phone,
+                    label: 'Téléphone',
+                    value: _patient!.emergencyContactPhone!,
                     color: Colors.red,
                   ),
-                  if (_patient?.emergencyContactPhone != null)
-                    _buildInfoRow(
-                      icon: Icons.phone,
-                      label: 'Téléphone',
-                      value: _patient!.emergencyContactPhone!,
-                      color: Colors.red,
-                    ),
-                  if (_patient?.emergencyContactRelation != null)
-                    _buildInfoRow(
-                      icon: Icons.group,
-                      label: 'Relation',
-                      value: _patient!.emergencyContactRelation!,
-                      color: Colors.red,
-                    ),
-                ],
-              ),
-          ],
-        ),
+                if (_patient?.emergencyContactRelation != null)
+                  _buildInfoRow(
+                    icon: Icons.group,
+                    label: 'Relation',
+                    value: _patient!.emergencyContactRelation!,
+                    color: Colors.red,
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -1005,19 +1340,48 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     required String value,
     required Color color,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: color),
-      title: Text(label),
-      trailing: Text(
-        value,
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          color: Colors.grey[800],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      contentPadding: EdgeInsets.zero,
     );
   }
+
+  // ============================ FORMULAIRE D'ÉDITION ============================
 
   Widget _buildEditForm() {
     return SingleChildScrollView(
@@ -1042,7 +1406,67 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
               ],
+            ),
+            const SizedBox(height: 20),
+
+            // Photo de profil
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        border: Border.all(
+                          color: AppTheme.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: _selectedImage != null
+                            ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                            : _imageUrl != null && _imageUrl!.isNotEmpty
+                                ? Image.network(_imageUrl!, fit: BoxFit.cover)
+                                : Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                      ),
+                    ),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -1059,22 +1483,20 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             // Nom complet
             _buildFormField(
               controller: _fullNameController,
-              label: 'Nom complet *',
+              label: 'Nom complet',
               icon: Icons.person,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ce champ est requis';
-                }
-                return null;
-              },
+              required: true,
             ),
 
             // Genre
             DropdownButtonFormField<String>(
               value: _selectedGender,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Genre',
-                prefixIcon: Icon(Icons.person_outline),
+                prefixIcon: const Icon(Icons.person_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               items: ['Homme', 'Femme', 'Autre']
                   .map((gender) => DropdownMenuItem(
@@ -1087,12 +1509,17 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               },
             ),
 
+            const SizedBox(height: 16),
+
             // Date de naissance
             TextFormField(
               controller: _birthDateController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Date de naissance',
-                prefixIcon: Icon(Icons.cake),
+                prefixIcon: const Icon(Icons.cake),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               readOnly: true,
               onTap: () async {
@@ -1110,12 +1537,17 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               },
             ),
 
+            const SizedBox(height: 16),
+
             // Statut matrimonial
             DropdownButtonFormField<String>(
               value: _selectedMaritalStatus,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Statut matrimonial',
-                prefixIcon: Icon(Icons.family_restroom),
+                prefixIcon: const Icon(Icons.family_restroom),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               items: [
                 'Célibataire',
@@ -1134,14 +1566,19 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               },
             ),
 
+            const SizedBox(height: 16),
+
             // Nombre d'enfants
             TextFormField(
               controller: TextEditingController(
                 text: _numberOfChildren?.toString() ?? '',
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Nombre d\'enfants',
-                prefixIcon: Icon(Icons.child_care),
+                prefixIcon: const Icon(Icons.child_care),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               keyboardType: TextInputType.number,
               onChanged: (value) {
@@ -1164,16 +1601,13 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             // Téléphone
             _buildFormField(
               controller: _phoneController,
-              label: 'Téléphone *',
+              label: 'Téléphone',
               icon: Icons.phone,
               keyboardType: TextInputType.phone,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ce champ est requis';
-                }
-                return null;
-              },
+              required: true,
             ),
+
+            const SizedBox(height: 16),
 
             // Adresse
             _buildFormField(
@@ -1181,6 +1615,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               label: 'Adresse',
               icon: Icons.home,
             ),
+
+            const SizedBox(height: 16),
 
             // Ville et code postal
             Row(
@@ -1202,6 +1638,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                 ),
               ],
             ),
+
+            const SizedBox(height: 16),
 
             // Pays
             _buildFormField(
@@ -1245,9 +1683,12 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               value: _bloodGroupController.text.isNotEmpty
                   ? _bloodGroupController.text
                   : null,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Groupe sanguin',
-                prefixIcon: Icon(Icons.bloodtype),
+                prefixIcon: const Icon(Icons.bloodtype),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               items: [
                 'A+',
@@ -1269,6 +1710,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                 _bloodGroupController.text = value ?? '';
               },
             ),
+
+            const SizedBox(height: 16),
 
             // Taille et poids
             Row(
@@ -1293,14 +1736,17 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               ],
             ),
 
+            const SizedBox(height: 24),
+
             // Mode de vie
-            const SizedBox(height: 16),
             const Text(
               'Mode de vie',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
+            const SizedBox(height: 12),
 
             Row(
               children: [
@@ -1360,6 +1806,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               ],
             ),
 
+            const SizedBox(height: 24),
+
             // Allergies
             _buildListSection(
               title: 'Allergies',
@@ -1391,7 +1839,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             ),
 
             // Antécédents chirurgicaux
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1399,6 +1847,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   'Antécédents chirurgicaux',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
                 IconButton(
@@ -1421,7 +1870,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   )),
 
             // Vaccins
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1429,6 +1878,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   'Vaccinations',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
                 IconButton(
@@ -1451,19 +1901,23 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   )),
 
             // Histoire familiale
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             const Text(
               'Histoire médicale familiale',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _familyHistoryController,
               maxLines: 3,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Antécédents médicaux dans la famille...',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
 
@@ -1485,12 +1939,16 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               icon: Icons.emergency,
             ),
 
+            const SizedBox(height: 16),
+
             _buildFormField(
               controller: _emergencyPhoneController,
               label: 'Téléphone du contact',
               icon: Icons.phone,
               keyboardType: TextInputType.phone,
             ),
+
+            const SizedBox(height: 16),
 
             _buildFormField(
               controller: _emergencyRelationController,
@@ -1508,20 +1966,48 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                     onPressed: () {
                       setState(() => _isEditing = false);
                     },
-                    child: const Text('Annuler'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: AppTheme.primaryColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Annuler',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _saveProfile,
+                    onPressed: _isLoading ? null : _saveProfile,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Enregistrer'),
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Enregistrer',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -1539,17 +2025,26 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     required String label,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
+    bool required = false,
   }) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: label + (required ? ' *' : ''),
         prefixIcon: Icon(icon),
-        border: const OutlineInputBorder(),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
       keyboardType: keyboardType,
-      validator: validator,
+      validator: required
+          ? (value) {
+              if (value == null || value.isEmpty) {
+                return 'Ce champ est requis';
+              }
+              return null;
+            }
+          : null,
     );
   }
 
@@ -1570,6 +2065,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
               title,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
             IconButton(
@@ -1581,7 +2077,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         if (list.isNotEmpty)
           Wrap(
             spacing: 8,
-            runSpacing: 4,
+            runSpacing: 8,
             children: list
                 .map((item) => Chip(
                       label: Text(item),
@@ -1593,6 +2089,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
       ],
     );
   }
+
+  // ============================ MÉTHODES EXISTANTES ============================
 
   void _showAddDialog(String type) {
     final controller = TextEditingController();
@@ -1916,6 +2414,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   Widget _buildProfileView() {
     return RefreshIndicator(
       onRefresh: _loadPatientProfile,
+      color: AppTheme.primaryColor,
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -1924,12 +2423,15 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                 const SizedBox(height: 20),
                 _buildProfileHeader(),
                 const SizedBox(height: 20),
+                _buildStatsRow(),
+                const SizedBox(height: 8),
                 _buildProfileCompletionIndicator(),
               ],
             ),
           ),
           SliverList(
             delegate: SliverChildListDelegate([
+              _buildHealthSummary(),
               _buildPersonalInfoSection(),
               _buildHealthInfoSection(),
               _buildContactInfoSection(),
@@ -1945,10 +2447,17 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     icon: const Icon(Icons.edit, size: 20),
-                    label: const Text('Modifier le profil'),
+                    label: const Text(
+                      'Modifier le profil',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
@@ -1963,79 +2472,128 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   void _showSettingsMenu() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.security, color: Colors.blue),
-                title: const Text('Sécurité du compte'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showSecurityDialog();
-                },
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              ListTile(
-                leading: const Icon(Icons.verified_user, color: Colors.green),
-                title: const Text('Vérifier l\'email'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _verifyEmail();
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Paramètres',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 0),
+
+                  // Liste défilante
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading:
+                                const Icon(Icons.security, color: Colors.blue),
+                            title: const Text('Sécurité du compte'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showSecurityDialog();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.verified_user,
+                                color: Colors.green),
+                            title: const Text('Vérifier l\'email'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _verifyEmail();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.privacy_tip,
+                                color: Colors.purple),
+                            title: const Text('Confidentialité'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showPrivacyDialog();
+                            },
+                          ),
+                          ListTile(
+                            leading:
+                                const Icon(Icons.help, color: Colors.orange),
+                            title: const Text('Aide et support'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              // Naviguer vers la page d'aide
+                              // Navigator.pushNamed(context, '/help');
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.info, color: Colors.grey),
+                            title: const Text('À propos'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              // Naviguer vers la page à propos
+                              // Navigator.pushNamed(context, '/about');
+                            },
+                          ),
+                          const Divider(),
+                          ListTile(
+                            leading:
+                                const Icon(Icons.delete, color: Colors.red),
+                            title: const Text('Supprimer le compte'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showDeleteAccountDialog();
+                            },
+                          ),
+                          ListTile(
+                            leading:
+                                const Icon(Icons.logout, color: Colors.red),
+                            title: const Text('Déconnexion'),
+                            onTap: () async {
+                              await _performLogout();
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.privacy_tip, color: Colors.purple),
-                title: const Text('Confidentialité'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showPrivacyDialog();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.help, color: Colors.orange),
-                title: const Text('Aide et support'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Naviguer vers la page d'aide
-                  // Navigator.pushNamed(context, '/help');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.info, color: Colors.grey),
-                title: const Text('À propos'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Naviguer vers la page à propos
-                  // Navigator.pushNamed(context, '/about');
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Supprimer le compte'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showDeleteAccountDialog();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Déconnexion'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final authProvider = Provider.of<AuthProvider>(
-                    context,
-                    listen: false,
-                  );
-                  await authProvider.signOut();
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -2150,7 +2708,11 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                           }
                         },
                   child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
                       : const Text('Changer'),
                 ),
               ],
@@ -2264,25 +2826,53 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading && _patient == null) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: Colors.white,
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Chargement du profil...',
+                style: TextStyle(
+                  color: AppTheme.greyColor,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mon Profil'),
+        title: Text(
+          _isEditing ? 'Modifier le profil' : 'Mon Profil',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: AppTheme.textColor,
         actions: [
           if (!_isEditing)
             IconButton(
-              icon: const Icon(Icons.settings),
+              icon: const Icon(Icons.settings_outlined),
               onPressed: _showSettingsMenu,
+              color: AppTheme.primaryColor,
             ),
         ],
       ),
       body: _isEditing ? _buildEditForm() : _buildProfileView(),
+      backgroundColor: AppTheme.backgroundColor,
     );
   }
 

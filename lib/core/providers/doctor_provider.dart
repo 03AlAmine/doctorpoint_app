@@ -186,9 +186,9 @@ class DoctorProvider with ChangeNotifier {
 
   Future<void> addDoctorToFirebase(Doctor doctor) async {
     try {
-      print('Ajout du médecin à Firebase...');
+     /* print('Ajout du médecin à Firebase...');
       print('Doctor ID: ${doctor.id}');
-      print('Doctor Name: ${doctor.name}');
+      print('Doctor Name: ${doctor.name}');*/
 
       await FirebaseFirestore.instance
           .collection('doctors')
@@ -260,14 +260,14 @@ class DoctorProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      print('Chargement des médecins depuis Firebase...');
+     /* print('Chargement des médecins depuis Firebase...');*/
 
       final querySnapshot = await FirebaseFirestore.instance
           .collection('doctors')
           .orderBy('name')
           .get();
 
-      print('${querySnapshot.docs.length} médecins trouvés dans Firebase');
+      /*print('${querySnapshot.docs.length} médecins trouvés dans Firebase');*/
 
       _doctors = querySnapshot.docs.map((doc) {
         return Doctor.fromFirestore(doc);

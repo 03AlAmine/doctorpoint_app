@@ -727,7 +727,7 @@ class AuthService {
  * ============================================================ */
   Future<void> signOut() async {
     try {
-      print('🔄 Démarrage de la déconnexion...');
+     // print('🔄 Démarrage de la déconnexion...');
 
       // 1. Sign out de Firebase Auth
       await _auth.signOut();
@@ -743,7 +743,7 @@ class AuthService {
         await Future.delayed(const Duration(milliseconds: 300));
       }
 
-      print('✅ Déconnexion réussie');
+     // print('✅ Déconnexion réussie');
     } catch (e) {
       print('❌ Erreur lors de la déconnexion: $e');
       rethrow;
