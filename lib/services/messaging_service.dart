@@ -8,8 +8,14 @@ class MessagingService {
   Future<String> getOrCreateConversation({
     required String doctorId,
     required String patientId,
+    required String patientName,
+    required String doctorName,
   }) async {
     try {
+      if (doctorId.isEmpty || patientId.isEmpty) {
+        throw Exception('Doctor ID and Patient ID cannot be empty');
+      }
+
       // Chercher une conversation existante
       final existingConversation = await _db
           .collection('conversations')
@@ -29,18 +35,22 @@ class MessagingService {
       await _db.collection('conversations').doc(conversationId).set({
         'id': conversationId,
         'doctorId': doctorId,
+        'doctorName': doctorName,
         'patientId': patientId,
+        'patientName': patientName,
         'lastMessage': '',
         'lastMessageTime': timestamp,
         'lastMessageSender': '',
+        'lastMessageSenderName': '',
         'unreadCount': 0,
         'createdAt': timestamp,
         'updatedAt': timestamp,
       });
 
+      print('✅ Conversation créée: $conversationId');
       return conversationId;
     } catch (e) {
-      print('Erreur création conversation: $e');
+      print('❌ Erreur création conversation: $e');
       rethrow;
     }
   }
@@ -49,12 +59,17 @@ class MessagingService {
   Future<void> sendMessage({
     required String conversationId,
     required String senderId,
+    required String senderName,
     required String senderType,
     required String text,
     String type = 'text',
     Map<String, dynamic>? attachment,
   }) async {
     try {
+      if (conversationId.isEmpty) {
+        throw Exception('Conversation ID cannot be empty');
+      }
+
       final messageId = _db.collection('messages').doc().id;
       final timestamp = FieldValue.serverTimestamp();
 
@@ -68,6 +83,7 @@ class MessagingService {
         'id': messageId,
         'conversationId': conversationId,
         'senderId': senderId,
+        'senderName': senderName,
         'senderType': senderType,
         'text': text,
         'type': type,
@@ -81,18 +97,14 @@ class MessagingService {
         'lastMessage': text,
         'lastMessageTime': timestamp,
         'lastMessageSender': senderId,
+        'lastMessageSenderName': senderName,
         'unreadCount': FieldValue.increment(1),
         'updatedAt': timestamp,
       });
 
-      // Envoyer une notification push (à implémenter avec FCM)
-      await _sendPushNotification(
-        conversationId: conversationId,
-        senderId: senderId,
-        message: text,
-      );
+      print('✅ Message envoyé dans conversation: $conversationId');
     } catch (e) {
-      print('Erreur envoi message: $e');
+      print('❌ Erreur envoi message: $e');
       rethrow;
     }
   }
@@ -108,6 +120,8 @@ class MessagingService {
           .where('senderId', isNotEqualTo: userId)
           .get();
 
+      if (messagesSnapshot.docs.isEmpty) return;
+
       final batch = _db.batch();
       for (var doc in messagesSnapshot.docs) {
         batch.update(doc.reference, {'read': true});
@@ -115,7 +129,6 @@ class MessagingService {
 
       await batch.commit();
 
-      // Réinitialiser le compteur de non-lus
       await _db.collection('conversations').doc(conversationId).update({
         'unreadCount': 0,
       });
@@ -138,13 +151,17 @@ class MessagingService {
         final data = doc.data();
         final patientId = data['patientId'];
         
-        if (patientId != null) {
-          final patientDoc = await _db.collection('patients').doc(patientId).get();
-          if (patientDoc.exists) {
-            conversations.add({
-              ...data,
-              'patient': patientDoc.data(),
-            });
+        if (patientId != null && patientId.toString().isNotEmpty) {
+          try {
+            final patientDoc = await _db.collection('patients').doc(patientId).get();
+            if (patientDoc.exists) {
+              conversations.add({
+                ...data,
+                'patient': patientDoc.data(),
+              });
+            }
+          } catch (e) {
+            print('Erreur chargement patient $patientId: $e');
           }
         }
       }
@@ -169,20 +186,9 @@ class MessagingService {
             .toList());
   }
 
-  // Envoyer une notification push
-  Future<void> _sendPushNotification({
-    required String conversationId,
-    required String senderId,
-    required String message,
-  }) async {
-    // À implémenter avec Firebase Cloud Messaging
-    print('Notification push à envoyer: $message');
-  }
-
   // Supprimer une conversation
   Future<void> deleteConversation(String conversationId) async {
     try {
-      // Supprimer tous les messages
       final messagesSnapshot = await _db
           .collection('conversations')
           .doc(conversationId)
@@ -194,7 +200,6 @@ class MessagingService {
         batch.delete(doc.reference);
       }
 
-      // Supprimer la conversation
       batch.delete(_db.collection('conversations').doc(conversationId));
 
       await batch.commit();

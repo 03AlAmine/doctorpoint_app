@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/data/models/patient_model.dart';
+import 'dart:async';
 
 class DoctorMessagingPage extends StatefulWidget {
   final Doctor doctor;
@@ -24,14 +25,95 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
   Patient? _selectedPatient;
   final TextEditingController _messageController = TextEditingController();
   bool _isLoading = true;
+  bool _isInitialized = false;
+  
+  StreamSubscription<QuerySnapshot>? _conversationsSubscription;
+  StreamSubscription<QuerySnapshot>? _messagesSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadConversations();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      // Vérifier que le docteur a un ID valide
+      if (widget.doctor.id.isEmpty) {
+        throw Exception('Doctor ID is empty');
+      }
+      
+      setState(() {
+        _isInitialized = true;
+        _isLoading = false;
+      });
+
+      // Charger les conversations
+      _loadConversations();
+      _setupConversationsListener();
+      
+    } catch (e) {
+      print('❌ Erreur initialisation: $e');
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _conversationsSubscription?.cancel();
+    _messagesSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupConversationsListener() {
+    if (!_isInitialized) return;
+    
+    _conversationsSubscription = _db
+        .collection('conversations')
+        .where('doctorId', isEqualTo: widget.doctor.id)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+          if (mounted) {
+            _loadConversations();
+          }
+        }, onError: (error) {
+          print('Erreur listener conversations: $error');
+        });
+  }
+
+  void _setupMessagesListener(String conversationId) {
+    _messagesSubscription?.cancel();
+    
+    _messagesSubscription = _db
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+          if (mounted) {
+            _loadMessages();
+            _markConversationAsRead(conversationId);
+          }
+        }, onError: (error) {
+          print('Erreur listener messages: $error');
+        });
   }
 
   Future<void> _loadConversations() async {
+    if (!_isInitialized) return;
+    
     try {
       final snapshot = await _db
           .collection('conversations')
@@ -45,50 +127,86 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
         final data = doc.data();
         final patientId = data['patientId'];
         
-        if (patientId != null) {
-          final patientDoc = await _db.collection('patients').doc(patientId).get();
-          if (patientDoc.exists) {
-            final patient = Patient.fromFirestore(patientDoc);
+        if (patientId != null && patientId.toString().isNotEmpty) {
+          try {
+            final patientDoc = await _db.collection('patients').doc(patientId).get();
+            final userDoc = await _db.collection('users').doc(patientId).get();
             
-            conversations.add({
-              'id': doc.id,
-              'conversationId': doc.id,
-              'patient': patient,
-              'patientName': patient.fullName,
-              'patientPhoto': patient.photoUrl,
-              'lastMessage': data['lastMessage'] ?? '',
-              'lastMessageTime': (data['lastMessageTime'] as Timestamp).toDate(),
-              'unreadCount': data['unreadCount'] ?? 0,
-              'doctorId': data['doctorId'],
-              'patientId': patientId,
-            });
+            if (patientDoc.exists || userDoc.exists) {
+              // Créer un objet Patient avec les données disponibles
+              final patient = Patient(
+                id: patientId,
+                uid: patientId,
+                email: userDoc.data()?['email'] ?? '',
+                fullName: userDoc.data()?['fullName'] ?? 
+                          patientDoc.data()?['fullName'] ?? 
+                          'Patient',
+                phone: userDoc.data()?['phone'] ?? '',
+                photoUrl: patientDoc.data()?['photoUrl'] ?? userDoc.data()?['photoUrl'],
+                profileCompleted: patientDoc.data()?['profileCompleted'] ?? false,
+                emailVerified: false,
+                createdAt: DateTime.now(),
+              );
+              
+              conversations.add({
+                'id': doc.id,
+                'conversationId': doc.id,
+                'patient': patient,
+                'patientName': patient.fullName,
+                'patientPhoto': patient.photoUrl,
+                'lastMessage': data['lastMessage'] ?? '',
+                'lastMessageTime': data['lastMessageTime'] != null
+                    ? (data['lastMessageTime'] as Timestamp).toDate()
+                    : DateTime.now(),
+                'unreadCount': data['unreadCount'] ?? 0,
+                'doctorId': data['doctorId'],
+                'patientId': patientId,
+              });
+            }
+          } catch (e) {
+            print('Erreur chargement patient $patientId: $e');
           }
         }
       }
 
-      setState(() {
-        _conversations = conversations;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _conversations = conversations;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Erreur chargement conversations: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _selectConversation(Map<String, dynamic> conversation) async {
-    setState(() {
-      _selectedConversationId = conversation['conversationId'];
-      _selectedPatient = conversation['patient'];
-      _messages = [];
-    });
+    final conversationId = conversation['conversationId']?.toString();
+    if (conversationId == null || conversationId.isEmpty) {
+      print('Erreur: ID de conversation invalide');
+      return;
+    }
 
+    if (mounted) {
+      setState(() {
+        _selectedConversationId = conversationId;
+        _selectedPatient = conversation['patient'];
+        _messages = [];
+      });
+    }
+
+    _setupMessagesListener(conversationId);
     await _loadMessages();
-    await _markConversationAsRead(conversation['conversationId']);
+    await _markConversationAsRead(conversationId);
   }
 
   Future<void> _loadMessages() async {
-    if (_selectedConversationId == null) return;
+    if (_selectedConversationId == null || _selectedConversationId!.isEmpty) {
+      return;
+    }
 
     try {
       final snapshot = await _db
@@ -104,23 +222,45 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
         return {
           'id': doc.id,
           'text': data['text'] ?? '',
-          'senderId': data['senderId'],
-          'senderType': data['senderType'], // 'doctor' ou 'patient'
-          'timestamp': (data['timestamp'] as Timestamp).toDate(),
+          'senderId': data['senderId'] ?? '',
+          'senderType': data['senderType'] ?? '',
+          'senderName': data['senderName'] ?? '',
+          'timestamp': data['timestamp'] != null
+              ? (data['timestamp'] as Timestamp).toDate()
+              : DateTime.now(),
           'read': data['read'] ?? false,
-          'type': data['type'] ?? 'text', // text, image, file, prescription
+          'type': data['type'] ?? 'text',
         };
       }).toList();
 
-      setState(() => _messages = messages);
+      if (mounted) {
+        setState(() => _messages = messages);
+      }
     } catch (e) {
       print('Erreur chargement messages: $e');
     }
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || 
-        _selectedConversationId == null) {
+    if (_messageController.text.trim().isEmpty) return;
+
+    if (_selectedConversationId == null || _selectedConversationId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aucune conversation sélectionnée'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedPatient == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Patient non identifié'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
@@ -129,6 +269,16 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
     final timestamp = FieldValue.serverTimestamp();
 
     try {
+      // Vérifier que la conversation existe
+      final conversationDoc = await _db
+          .collection('conversations')
+          .doc(_selectedConversationId)
+          .get();
+      
+      if (!conversationDoc.exists) {
+        throw Exception('Conversation non trouvée');
+      }
+
       // Envoyer le message
       await _db
           .collection('conversations')
@@ -139,8 +289,8 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
         'id': messageId,
         'text': messageText,
         'senderId': widget.doctor.id,
-        'senderType': 'doctor',
         'senderName': widget.doctor.name,
+        'senderType': 'doctor',
         'timestamp': timestamp,
         'read': false,
         'type': 'text',
@@ -151,56 +301,29 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
         'lastMessage': messageText,
         'lastMessageTime': timestamp,
         'lastMessageSender': widget.doctor.id,
+        'lastMessageSenderName': widget.doctor.name,
         'unreadCount': FieldValue.increment(1),
         'updatedAt': timestamp,
       });
 
-      // Envoyer une notification au patient
-      await _sendNotificationToPatient(
-        patientId: _selectedPatient!.id,
-        message: messageText,
-      );
-
-      // Recharger les messages
-      await _loadMessages();
-      
       _messageController.clear();
     } catch (e) {
-      print('Erreur envoi message: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur d\'envoi: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _sendNotificationToPatient({
-    required String patientId,
-    required String message,
-  }) async {
-    try {
-      await _db.collection('notifications').add({
-        'userId': patientId,
-        'title': 'Nouveau message du Dr. ${widget.doctor.name}',
-        'message': message.length > 50 ? '${message.substring(0, 50)}...' : message,
-        'type': 'message',
-        'data': {
-          'conversationId': _selectedConversationId,
-          'doctorId': widget.doctor.id,
-        },
-        'read': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      print('Erreur envoi notification: $e');
+      print('❌ Erreur envoi message: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur d\'envoi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _markConversationAsRead(String conversationId) async {
+    if (conversationId.isEmpty) return;
+
     try {
-      // Marquer tous les messages comme lus
       final messagesSnapshot = await _db
           .collection('conversations')
           .doc(conversationId)
@@ -209,61 +332,94 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
           .where('senderType', isEqualTo: 'patient')
           .get();
 
+      if (messagesSnapshot.docs.isEmpty) return;
+
+      final batch = _db.batch();
       for (var doc in messagesSnapshot.docs) {
-        await doc.reference.update({'read': true});
+        batch.update(doc.reference, {'read': true});
       }
 
-      // Réinitialiser le compteur de messages non lus
-      await _db.collection('conversations').doc(conversationId).update({
-        'unreadCount': 0,
-      });
+      batch.update(
+        _db.collection('conversations').doc(conversationId),
+        {'unreadCount': 0},
+      );
 
-      // Recharger les conversations
+      await batch.commit();
       await _loadConversations();
     } catch (e) {
       print('Erreur marquage messages comme lus: $e');
     }
   }
 
-  Future<void> _startNewConversation() async {
-    showDialog(
+  Future<void> _deleteConversation() async {
+    if (_selectedConversationId == null) return;
+
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nouvelle conversation'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Recherche de patient
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Rechercher un patient',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onChanged: _searchPatients,
-              ),
-              const SizedBox(height: 16),
-              // Liste des patients (à implémenter)
-              // ...
-            ],
-          ),
-        ),
+        title: const Text('Supprimer la conversation'),
+        content: const Text('Voulez-vous vraiment supprimer cette conversation ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Annuler'),
           ),
-          ElevatedButton(
-            onPressed: () {},
-            child: const Text('Démarrer'),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Supprimer',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
-  }
 
-  void _searchPatients(String query) {
-    // Implémenter la recherche de patients
+    if (confirmed == true) {
+      try {
+        final batch = _db.batch();
+        
+        // Supprimer tous les messages
+        final messagesSnapshot = await _db
+            .collection('conversations')
+            .doc(_selectedConversationId)
+            .collection('messages')
+            .get();
+
+        for (var doc in messagesSnapshot.docs) {
+          batch.delete(doc.reference);
+        }
+        
+        batch.delete(_db.collection('conversations').doc(_selectedConversationId!));
+        await batch.commit();
+
+        if (mounted) {
+          setState(() {
+            _selectedConversationId = null;
+            _selectedPatient = null;
+            _messages.clear();
+          });
+          await _loadConversations();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Conversation supprimée'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        print('Erreur suppression conversation: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildConversationList() {
@@ -302,9 +458,19 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
     return ListView.builder(
       itemCount: _conversations.length,
       itemBuilder: (context, index) {
+        // Vérification que l'index est valide
+        if (index >= _conversations.length) {
+          return const SizedBox.shrink();
+        }
+        
         final conversation = _conversations[index];
         final isSelected = _selectedConversationId == conversation['conversationId'];
-        final patient = conversation['patient'] as Patient;
+        final patient = conversation['patient'] as Patient?;
+        
+        if (patient == null) {
+          return const SizedBox.shrink();
+        }
+        
         final unreadCount = conversation['unreadCount'] ?? 0;
 
         return Container(
@@ -322,7 +488,9 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                   : null,
               child: patient.photoUrl == null
                   ? Text(
-                      patient.fullName.split(' ').map((n) => n[0]).take(2).join(),
+                      patient.fullName.isNotEmpty
+                          ? patient.fullName[0].toUpperCase()
+                          : 'P',
                       style: const TextStyle(
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.bold,
@@ -334,7 +502,7 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
               children: [
                 Expanded(
                   child: Text(
-                    patient.fullName,
+                    patient.fullName.isNotEmpty ? patient.fullName : 'Patient',
                     style: TextStyle(
                       fontWeight: unreadCount > 0
                           ? FontWeight.bold
@@ -394,6 +562,7 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
     final isDoctor = message['senderType'] == 'doctor';
     final messageTime = message['timestamp'] as DateTime;
     final isRead = message['read'] ?? false;
+    final senderName = message['senderName'] ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -415,11 +584,9 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                     : null,
                 child: _selectedPatient!.photoUrl == null
                     ? Text(
-                        _selectedPatient!.fullName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .take(1)
-                            .join(),
+                        _selectedPatient!.fullName.isNotEmpty
+                            ? _selectedPatient!.fullName[0].toUpperCase()
+                            : 'P',
                         style: const TextStyle(
                           color: AppTheme.primaryColor,
                           fontSize: 12,
@@ -434,6 +601,18 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
+                if (!isDoctor && senderName.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4, left: 8),
+                    child: Text(
+                      senderName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.greyColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 Container(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.7,
@@ -532,6 +711,10 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
+        // Vérification que l'index est valide
+        if (index >= _messages.length) {
+          return const SizedBox.shrink();
+        }
         return _buildMessageBubble(_messages[index]);
       },
     );
@@ -559,10 +742,7 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
         children: [
           IconButton(
             icon: const Icon(Icons.attach_file),
-            onPressed: () {
-              // Attacher un fichier
-              _showAttachmentMenu();
-            },
+            onPressed: _showAttachmentMenu,
           ),
           Expanded(
             child: TextField(
@@ -607,26 +787,17 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
               ListTile(
                 leading: const Icon(Icons.image, color: Colors.green),
                 title: const Text('Image'),
-                onTap: () {
-                  // Implémenter la sélection d'image
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
                 title: const Text('Document PDF'),
-                onTap: () {
-                  // Implémenter la sélection de document
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               ListTile(
                 leading: const Icon(Icons.medical_services, color: Colors.blue),
                 title: const Text('Prescription'),
-                onTap: () {
-                  // Implémenter l'envoi de prescription
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               ListTile(
                 leading: const Icon(Icons.close),
@@ -640,28 +811,37 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
     );
   }
 
+  void _startNewConversation() {
+    // TODO: Implémenter la recherche de patients
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fonctionnalité à venir'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (!_isInitialized) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Erreur d\'initialisation'),
+        ),
+      );
+    }
+
     final screenSize = MediaQuery.of(context).size;
     final isDesktop = screenSize.width > 768;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Messagerie'),
-        backgroundColor: AppTheme.primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadConversations,
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Recherche de conversations
-            },
-          ),
-        ],
-      ),
       body: isDesktop
           ? Row(
               children: [
@@ -711,11 +891,9 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                                     : null,
                                 child: _selectedPatient!.photoUrl == null
                                     ? Text(
-                                        _selectedPatient!.fullName
-                                            .split(' ')
-                                            .map((n) => n[0])
-                                            .take(1)
-                                            .join(),
+                                        _selectedPatient!.fullName.isNotEmpty
+                                            ? _selectedPatient!.fullName[0].toUpperCase()
+                                            : 'P',
                                         style: const TextStyle(
                                           color: AppTheme.primaryColor,
                                           fontWeight: FontWeight.bold,
@@ -729,49 +907,37 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      _selectedPatient!.fullName,
+                                      _selectedPatient!.fullName.isNotEmpty
+                                          ? _selectedPatient!.fullName
+                                          : 'Patient',
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Text(
-                                      '${_selectedPatient!.age} ans • ${_selectedPatient!.gender ?? 'Non spécifié'}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.greyColor,
+                                    if (_selectedPatient!.age > 0)
+                                      Text(
+                                        '${_selectedPatient!.age} ans • ${_selectedPatient!.gender ?? 'Non spécifié'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.greyColor,
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.videocam),
-                                onPressed: () {
-                                  // Appel vidéo
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.call),
-                                onPressed: () {
-                                  // Appel audio
-                                },
-                              ),
                               PopupMenuButton(
                                 itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'medical',
-                                    child: Text('Dossier médical'),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'appointment',
-                                    child: Text('Prendre rendez-vous'),
-                                  ),
                                   const PopupMenuItem(
                                     value: 'clear',
                                     child: Text('Effacer la conversation'),
                                   ),
                                 ],
+                                onSelected: (value) {
+                                  if (value == 'clear') {
+                                    _deleteConversation();
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -815,11 +981,9 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                               : null,
                           child: _selectedPatient!.photoUrl == null
                               ? Text(
-                                  _selectedPatient!.fullName
-                                      .split(' ')
-                                      .map((n) => n[0])
-                                      .take(1)
-                                      .join(),
+                                  _selectedPatient!.fullName.isNotEmpty
+                                      ? _selectedPatient!.fullName[0].toUpperCase()
+                                      : 'P',
                                   style: const TextStyle(
                                     color: AppTheme.primaryColor,
                                     fontWeight: FontWeight.bold,
@@ -833,7 +997,9 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _selectedPatient!.fullName,
+                                _selectedPatient!.fullName.isNotEmpty
+                                    ? _selectedPatient!.fullName
+                                    : 'Patient',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -849,10 +1015,17 @@ class _DoctorMessagingPageState extends State<DoctorMessagingPage> {
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.more_vert),
-                          onPressed: () {
-                            // Menu d'options
+                        PopupMenuButton(
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'clear',
+                              child: Text('Effacer la conversation'),
+                            ),
+                          ],
+                          onSelected: (value) {
+                            if (value == 'clear') {
+                              _deleteConversation();
+                            }
                           },
                         ),
                       ],
