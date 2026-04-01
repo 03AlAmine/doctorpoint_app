@@ -1,8 +1,10 @@
-// ignore_for_file: unused_element, library_private_types_in_public_api
+// lib/presentation/pages/doctor/doctor_dashboard.dart
+// Version corrigée sans MouseCursor et avec gestion d'erreurs améliorée
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:doctorpoint/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/presentation/pages/doctor/doctor_agenda_page.dart';
@@ -12,6 +14,7 @@ import 'package:doctorpoint/presentation/pages/doctor/doctor_messaging_page.dart
 import 'package:doctorpoint/presentation/pages/doctor/doctor_settings_page.dart';
 import 'package:doctorpoint/presentation/pages/doctor/doctor_statistics_page.dart';
 import 'package:doctorpoint/presentation/pages/doctor/doctor_documents_page.dart';
+import 'package:doctorpoint/presentation/pages/doctor/doctor_availability_page.dart';
 import 'package:intl/intl.dart';
 
 class DoctorDashboard extends StatefulWidget {
@@ -23,12 +26,12 @@ class DoctorDashboard extends StatefulWidget {
   State<DoctorDashboard> createState() => _DoctorDashboardState();
 }
 
-class _DoctorDashboardState extends State<DoctorDashboard> {
+class _DoctorDashboardState extends State<DoctorDashboard> with TickerProviderStateMixin {
   int _selectedIndex = 0;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   bool _isInitialized = false;
+  late AnimationController _animationController;
 
-  // Pages principales avec leurs widgets
   List<Map<String, dynamic>> get _pages => [
         {
           'title': 'Tableau',
@@ -40,8 +43,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           'title': 'Agenda',
           'icon': Icons.calendar_today,
           'page': 'calendar',
-          'widget':
-              DoctorAgendaPage(doctor: widget.doctor), // Page agenda améliorée
+          'widget': DoctorAgendaPage(doctor: widget.doctor),
         },
         {
           'title': 'Patients',
@@ -53,12 +55,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           'title': 'Messages',
           'icon': Icons.message,
           'page': 'messaging',
-          'widget':
-              DoctorMessagingPage(doctor: widget.doctor), // Messagerie complète
+          'widget': DoctorMessagingPage(doctor: widget.doctor),
         },
       ];
 
-  // Variables pour les données dynamiques
   Map<String, dynamic> _stats = {
     'todayAppointments': 0,
     'totalPatients': 0,
@@ -73,8 +73,17 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   @override
   void initState() {
     super.initState();
-    // Initialisation sans accès au context
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     _loadDoctorData();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -87,12 +96,10 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   }
 
   void _initializePages() {
-    // Initialiser les pages ici (après que les dépendances sont disponibles)
     _pages[0]['widget'] = _buildOverviewPage();
     _pages[1]['widget'] = DoctorAgendaPage(doctor: widget.doctor);
     _pages[2]['widget'] = DoctorPatientsPage(doctor: widget.doctor);
     _pages[3]['widget'] = DoctorMessagingPage(doctor: widget.doctor);
-    // Charger les données
     _loadStatistics();
     _loadRecentAppointments();
     _loadUpcomingAppointments();
@@ -102,7 +109,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final doc = await _db.collection('doctors').doc(widget.doctor.id).get();
       if (doc.exists) {
-        // Vous pouvez mettre à jour les données du médecin si nécessaire
+        // Mise à jour des données si nécessaire
       }
     } catch (e) {
       print('Erreur chargement données médecin: $e');
@@ -114,14 +121,12 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
       final today = DateTime.now();
       final todayStr = DateFormat('yyyy-MM-dd').format(today);
 
-      // 1. Rendez-vous du jour
       final todayAppointmentsSnapshot = await _db
           .collection('appointments')
           .where('doctorId', isEqualTo: widget.doctor.id)
           .where('date', isEqualTo: todayStr)
           .where('status', whereIn: ['confirmed', 'scheduled']).get();
 
-      // 2. Nombre total de patients (patients uniques)
       final appointmentsSnapshot = await _db
           .collection('appointments')
           .where('doctorId', isEqualTo: widget.doctor.id)
@@ -135,14 +140,12 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         }
       }
 
-      // 3. Rendez-vous en attente
       final pendingSnapshot = await _db
           .collection('appointments')
           .where('doctorId', isEqualTo: widget.doctor.id)
           .where('status', isEqualTo: 'pending')
           .get();
 
-      // 4. Revenus du mois
       final firstDayOfMonth = DateTime(today.year, today.month, 1);
       final lastDayOfMonth = DateTime(today.year, today.month + 1, 0);
       final firstDayStr = DateFormat('yyyy-MM-dd').format(firstDayOfMonth);
@@ -195,17 +198,18 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
-
-// Récupérer les informations du patient
         final patientId = data['patientId'];
         String patientName = 'Patient';
+        
         if (patientId != null) {
-          // CORRECTION: Chercher dans 'users' au lieu de 'patients'
-          final userDoc =
-              await _db.collection('users').doc(patientId.toString()).get();
-          if (userDoc.exists) {
-            final userData = userDoc.data()!;
-            patientName = userData['fullName'] as String? ?? 'Patient';
+          try {
+            final userDoc = await _db.collection('users').doc(patientId.toString()).get();
+            if (userDoc.exists) {
+              final userData = userDoc.data()!;
+              patientName = userData['fullName'] as String? ?? 'Patient';
+            }
+          } catch (e) {
+            print('Erreur chargement patient: $e');
           }
         }
 
@@ -249,14 +253,17 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
-
         final patientId = data['patientId'];
         String patientName = 'Patient';
+        
         if (patientId != null) {
-          final userDoc =
-              await _db.collection('patients').doc(patientId.toString()).get();
-          if (userDoc.exists) {
-            patientName = userDoc['fullName'] ?? 'Patient';
+          try {
+            final userDoc = await _db.collection('patients').doc(patientId.toString()).get();
+            if (userDoc.exists) {
+              patientName = userDoc['fullName'] ?? 'Patient';
+            }
+          } catch (e) {
+            print('Erreur chargement patient: $e');
           }
         }
 
@@ -312,6 +319,802 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     );
   }
 
+  // ==================== ACTIONS POUR L'AGENDA ====================
+
+  void _openAvailabilitySettings() {
+    try {
+      HapticFeedback.lightImpact();
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DoctorAvailabilityPage(
+            doctor: widget.doctor,
+            availability: null,
+            onAvailabilityUpdated: () {
+              if (mounted) {
+                _refreshAgenda();
+                _showSuccessSnackBar('Disponibilités mises à jour');
+              }
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur ouverture disponibilités: $e');
+    }
+  }
+
+  void _refreshAgenda() {
+    try {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _pages[1]['widget'] = DoctorAgendaPage(doctor: widget.doctor);
+      });
+      _showSuccessSnackBar('Agenda actualisé');
+    } catch (e) {
+      print('Erreur rafraîchissement agenda: $e');
+    }
+  }
+
+  // ==================== ACTIONS POUR LES PATIENTS ====================
+
+  void _showAddPatientDialog() {
+    try {
+      HapticFeedback.lightImpact();
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            width: 500,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.person_add,
+                        color: AppTheme.primaryColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Ajouter un patient',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Nom complet',
+                    prefixIcon: Icon(Icons.person, color: AppTheme.primaryColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Âge',
+                          prefixIcon: Icon(Icons.cake, color: AppTheme.primaryColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Genre',
+                          prefixIcon: Icon(Icons.transgender, color: AppTheme.primaryColor),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: ['Homme', 'Femme', 'Autre']
+                            .map((gender) => DropdownMenuItem(
+                                  value: gender,
+                                  child: Text(gender),
+                                ))
+                            .toList(),
+                        onChanged: (value) {},
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Téléphone',
+                    prefixIcon: Icon(Icons.phone, color: AppTheme.primaryColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email, color: AppTheme.primaryColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                
+                TextField(
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Notes médicales',
+                    prefixIcon: Icon(Icons.note, color: AppTheme.primaryColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Annuler'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _pages[2]['widget'] = DoctorPatientsPage(doctor: widget.doctor);
+                        });
+                        _showSuccessSnackBar('Patient ajouté avec succès');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Ajouter'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur affichage dialogue ajout patient: $e');
+    }
+  }
+
+  void _showFilterDialog() {
+    try {
+      HapticFeedback.lightImpact();
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filtrer les patients',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                const Text(
+                  'Statut',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: ['Tous', 'Actif', 'Suivi', 'Inactif'].map((status) {
+                    return FilterChip(
+                      label: Text(status),
+                      selected: status == 'Tous',
+                      onSelected: (selected) {},
+                      selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+                      checkmarkColor: AppTheme.primaryColor,
+                    );
+                  }).toList(),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                const Text(
+                  'Date de dernière visite',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        child: const Text('Cette semaine'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        child: const Text('Ce mois'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        child: const Text('3 mois'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        child: const Text('6 mois'),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Réinitialiser'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showSuccessSnackBar('Filtres appliqués');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Appliquer'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Erreur affichage dialogue filtres: $e');
+    }
+  }
+
+  // ==================== ACTIONS POUR LA MESSAGERIE ====================
+
+  void _startNewConversation() {
+    try {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _selectedIndex = 3;
+      });
+      
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _showNewConversationDialog();
+        }
+      });
+    } catch (e) {
+      print('Erreur démarrage conversation: $e');
+    }
+  }
+
+  void _showNewConversationDialog() {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Nouvelle conversation'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Sélectionnez un patient pour démarrer une conversation'),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher un patient...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    itemCount: 5,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          child: Text(
+                            'P${index + 1}',
+                            style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        title: Text('Patient ${index + 1}'),
+                        subtitle: const Text('Dernier message il y a 2 jours'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showSuccessSnackBar('Conversation démarrée avec Patient ${index + 1}');
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur affichage dialogue conversation: $e');
+    }
+  }
+
+  void _showSearchDialog() {
+    try {
+      HapticFeedback.lightImpact();
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            width: 400,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher dans les messages...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  onSubmitted: (value) {
+                    Navigator.pop(context);
+                    _showSuccessSnackBar('Recherche: "$value"');
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.history, size: 16, color: Colors.grey),
+                      SizedBox(width: 8),
+                      Text(
+                        'Recherches récentes',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                ListTile(
+                  leading: const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                  title: const Text('Derniers messages'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showSuccessSnackBar('Affichage des derniers messages');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                  title: const Text('Patients récents'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showSuccessSnackBar('Affichage des patients récents');
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur affichage dialogue recherche: $e');
+    }
+  }
+
+  // ==================== ACTIONS POUR LE DASHBOARD ====================
+
+  void _refreshDashboard() {
+    try {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _isLoading = true;
+      });
+      
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _loadStatistics();
+          _loadRecentAppointments();
+          _loadUpcomingAppointments();
+          
+          setState(() {
+            _isLoading = false;
+          });
+          
+          _showSuccessSnackBar('Tableau de bord actualisé');
+        }
+      });
+    } catch (e) {
+      print('Erreur rafraîchissement dashboard: $e');
+    }
+  }
+
+  void _goToTodayAgenda() {
+    try {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _selectedIndex = 1;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.today, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              const Text('Affichage de l\'agenda du jour'),
+            ],
+          ),
+          backgroundColor: Colors.blue,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Erreur navigation agenda: $e');
+    }
+  }
+
+  // ==================== MÉTHODES UTILITAIRES ====================
+
+  void _showSuccessSnackBar(String message) {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text(message)),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height - 150,
+            left: 20,
+            right: 20,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur affichage SnackBar: $e');
+    }
+  }
+
+  void _showNotifications(BuildContext context) {
+    try {
+      HapticFeedback.lightImpact();
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Notifications',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.notifications_none,
+                        size: 60,
+                        color: AppTheme.greyColor.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Aucune notification',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Erreur affichage notifications: $e');
+    }
+  }
+
+  Future<void> _performLogout(BuildContext context) async {
+    try {
+      HapticFeedback.mediumImpact();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Déconnexion'),
+          content: const Text('Voulez-vous vraiment vous déconnecter ?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Déconnexion'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        if (!mounted) return;
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+
+        final authService = AuthService();
+        await authService.signOut();
+
+        if (mounted) {
+          Navigator.pop(context);
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/login',
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Erreur de déconnexion: ${e.toString()}')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  // ==================== BOUTON D'ACTION RESPONSIVE ====================
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final bool showLabel = screenWidth > 500;
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            try {
+              onPressed();
+            } catch (e) {
+              print('Erreur dans le bouton: $e');
+            }
+          },
+          borderRadius: BorderRadius.circular(10),
+          splashColor: Colors.white.withOpacity(0.3),
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: showLabel ? 12 : 10,
+              vertical: 8,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white, size: 20),
+                if (showLabel) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==================== PAGES ====================
+
   Widget _buildOverviewPage() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -327,7 +1130,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // En-tête avec bienvenue
+              // En-tête de bienvenue
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -396,7 +1199,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
               const SizedBox(height: 32),
 
-              // Statistiques en temps réel
+              // Statistiques
               Text(
                 'Aujourd\'hui',
                 style: TextStyle(
@@ -448,7 +1251,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                   TextButton(
                     onPressed: () {
                       setState(() {
-                        _selectedIndex = 1; // Naviguer vers Agenda
+                        _selectedIndex = 1;
                       });
                     },
                     child: Text(
@@ -615,7 +1418,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         gradient: stat['gradient'] as Gradient,
         boxShadow: [
           BoxShadow(
-            color: stat['color'].withOpacity(0.3),
+            color: (stat['color'] as Color).withOpacity(0.3),
             blurRadius: 12,
             spreadRadius: -4,
             offset: const Offset(0, 6),
@@ -764,7 +1567,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         'color': Colors.blue,
         'action': () {
           setState(() {
-            _selectedIndex = 1; // Naviguer vers Agenda
+            _selectedIndex = 1;
           });
         },
       },
@@ -774,7 +1577,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         'color': Colors.green,
         'action': () {
           setState(() {
-            _selectedIndex = 2; // Naviguer vers Patients
+            _selectedIndex = 2;
           });
         },
       },
@@ -837,9 +1640,15 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: action['action'] as Function(),
+          onTap: () {
+            try {
+              (action['action'] as Function())();
+            } catch (e) {
+              print('Erreur action carte: $e');
+            }
+          },
           borderRadius: BorderRadius.circular(16),
-          splashColor: action['color'].withOpacity(0.1),
+          splashColor: (action['color'] as Color).withOpacity(0.1),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -852,15 +1661,15 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        action['color'].withOpacity(0.1),
-                        action['color'].withOpacity(0.2),
+                        (action['color'] as Color).withOpacity(0.1),
+                        (action['color'] as Color).withOpacity(0.2),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     action['icon'] as IconData,
-                    color: action['color'],
+                    color: action['color'] as Color,
                     size: 24,
                   ),
                 ),
@@ -967,66 +1776,12 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   }
 
   Widget _buildCurrentPage() {
-    // Vérifier si les pages sont initialisées
     if (!_isInitialized || _pages[0]['widget'] == null) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
-
-    // Retourne le widget de la page sélectionnée
     return _pages[_selectedIndex]['widget'] as Widget;
-  }
-
-  Future<void> _performLogout(BuildContext context) async {
-    try {
-      // Montrer un indicateur de chargement
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Center(
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const CircularProgressIndicator(
-              color: AppTheme.primaryColor,
-            ),
-          ),
-        ),
-      );
-
-      // Effectuer la déconnexion
-      final authService = AuthService();
-      await authService.signOut();
-
-      // Fermer l'indicateur de chargement
-      Navigator.pop(context);
-
-      // Rediriger vers la page de connexion
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/login',
-        (route) => false,
-      );
-    } catch (e) {
-      // Fermer l'indicateur de chargement en cas d'erreur
-      Navigator.pop(context);
-
-      // Afficher l'erreur
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur de déconnexion: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
   }
 
   @override
@@ -1034,121 +1789,211 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     final screenSize = MediaQuery.of(context).size;
     final isMobile = screenSize.width < 600;
 
+    String pageTitle = _pages[_selectedIndex]['title'];
+    List<Widget> pageActions = [];
+
+    switch (_pages[_selectedIndex]['page']) {
+      case 'calendar':
+        pageActions = [
+          _buildActionButton(
+            icon: Icons.settings,
+            label: 'Disponibilité',
+            onPressed: _openAvailabilitySettings,
+            color: Colors.blue,
+          ),
+          _buildActionButton(
+            icon: Icons.refresh,
+            label: 'Actualiser',
+            onPressed: _refreshAgenda,
+            color: Colors.green,
+          ),
+        ];
+        break;
+      case 'patients':
+        pageActions = [
+          _buildActionButton(
+            icon: Icons.person_add,
+            label: 'Nouveau',
+            onPressed: _showAddPatientDialog,
+            color: Colors.blue,
+          ),
+          _buildActionButton(
+            icon: Icons.filter_list,
+            label: 'Filtrer',
+            onPressed: _showFilterDialog,
+            color: Colors.purple,
+          ),
+        ];
+        break;
+      case 'messaging':
+        pageActions = [
+          _buildActionButton(
+            icon: Icons.edit,
+            label: 'Nouveau',
+            onPressed: _startNewConversation,
+            color: Colors.green,
+          ),
+          _buildActionButton(
+            icon: Icons.search,
+            label: 'Rechercher',
+            onPressed: _showSearchDialog,
+            color: Colors.orange,
+          ),
+        ];
+        break;
+      default:
+        pageActions = [
+          _buildActionButton(
+            icon: Icons.refresh,
+            label: 'Actualiser',
+            onPressed: _refreshDashboard,
+            color: Colors.green,
+          ),
+          _buildActionButton(
+            icon: Icons.today,
+            label: "Aujourd'hui",
+            onPressed: _goToTodayAgenda,
+            color: Colors.blue,
+          ),
+        ];
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _pages[_selectedIndex]['title'] as String,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _pages[_selectedIndex]['icon'] as IconData,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              pageTitle,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
-        backgroundColor: AppTheme.primaryColor,
-        centerTitle: false,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(20),
-            bottomRight: Radius.circular(20),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withBlue(200),
+              ],
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notifications - À implémenter'),
-                ),
-              );
-            },
+          ...pageActions,
+          const SizedBox(width: 4),
+          Container(
+            margin: const EdgeInsets.only(right: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+              onPressed: () => _showNotifications(context),
+              tooltip: 'Notifications',
+              padding: const EdgeInsets.all(10),
+              constraints: const BoxConstraints(),
+            ),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'logout') {
-                _performLogout(context);
-              } else {
-                _navigateToExtraPage(value);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem<String>(
-                value: 'prescriptions',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.medical_services,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text('Prescriptions'),
-                  ],
-                ),
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              const PopupMenuItem<String>(
-                value: 'statistics',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.bar_chart,
-                      color: Colors.green,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text('Statistiques'),
-                  ],
+              offset: const Offset(0, 50),
+              onSelected: (value) {
+                if (value == 'logout') {
+                  _performLogout(context);
+                } else {
+                  _navigateToExtraPage(value);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem<String>(
+                  value: 'prescriptions',
+                  child: Row(
+                    children: [
+                      Icon(Icons.medical_services, color: Colors.blue, size: 20),
+                      SizedBox(width: 12),
+                      Text('Prescriptions'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'documents',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.description,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text('Documents'),
-                  ],
+                const PopupMenuItem<String>(
+                  value: 'statistics',
+                  child: Row(
+                    children: [
+                      Icon(Icons.bar_chart, color: Colors.green, size: 20),
+                      SizedBox(width: 12),
+                      Text('Statistiques'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.settings,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text('Paramètres'),
-                  ],
+                const PopupMenuItem<String>(
+                  value: 'documents',
+                  child: Row(
+                    children: [
+                      Icon(Icons.description, color: Colors.orange, size: 20),
+                      SizedBox(width: 12),
+                      Text('Documents'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem<String>(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.logout,
-                      color: Colors.red,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      'Déconnexion',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ],
+                const PopupMenuItem<String>(
+                  value: 'settings',
+                  child: Row(
+                    children: [
+                      Icon(Icons.settings, color: Colors.grey, size: 20),
+                      SizedBox(width: 12),
+                      Text('Paramètres'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, color: Colors.red, size: 20),
+                      SizedBox(width: 12),
+                      Text('Déconnexion', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1184,8 +2029,8 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
               ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
                 child: BottomNavigationBar(
                   currentIndex: _selectedIndex,

@@ -1,5 +1,9 @@
+// lib/presentation/pages/patient/doctor_detail_page.dart
+// REDESIGN COMPLET - Header hero, stats, design premium
+
 import 'package:doctorpoint/presentation/pages/patient/book_appointment_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/core/theme/app_theme.dart';
@@ -10,394 +14,504 @@ import 'package:doctorpoint/core/providers/doctor_provider.dart';
 class DoctorDetailPage extends StatefulWidget {
   final Doctor doctor;
 
-  const DoctorDetailPage({
-    super.key,
-    required this.doctor,
-  });
+  const DoctorDetailPage({super.key, required this.doctor});
 
   @override
   State<DoctorDetailPage> createState() => _DoctorDetailPageState();
 }
 
-class _DoctorDetailPageState extends State<DoctorDetailPage> {
-  int _selectedTimeSlot = 0;
-  DateTime _selectedDate = DateTime.now();
-  final PageController _pageController = PageController();
-  int _currentImageIndex = 0;
+class _DoctorDetailPageState extends State<DoctorDetailPage>
+    with SingleTickerProviderStateMixin {
+  final ScrollController _scrollController = ScrollController();
+  bool _showStickyHeader = false;
+  bool _isDescriptionExpanded = false;
 
-  final List<String> _doctorImages = [
-    'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
-    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2',
-    'https://images.unsplash.com/photo-1537368910025-700350fe46c7',
-  ];
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
 
-  final List<Map<String, dynamic>> _timeSlots = [
-    {'time': '09:00 AM - 10:00 AM', 'isAvailable': true},
-    {'time': '10:00 AM - 11:00 AM', 'isAvailable': true},
-    {'time': '11:00 AM - 12:00 PM', 'isAvailable': false},
-    {'time': '02:00 PM - 03:00 PM', 'isAvailable': true},
-    {'time': '03:00 PM - 04:00 PM', 'isAvailable': true},
-    {'time': '04:00 PM - 05:00 PM', 'isAvailable': true},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _animController.forward();
 
-  final List<DateTime> _availableDates = List.generate(
-    7,
-    (index) => DateTime.now().add(Duration(days: index)),
-  );
+    _scrollController.addListener(() {
+      final show = _scrollController.offset > 240;
+      if (show != _showStickyHeader) {
+        setState(() => _showStickyHeader = show);
+      }
+    });
+  }
 
-
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _animController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final doctorProvider = Provider.of<DoctorProvider>(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
+    final provider = Provider.of<DoctorProvider>(context);
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header avec photo du médecin
-              _buildDoctorHeader(screenWidth, doctorProvider),
-
-              // Contenu principal
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 16 : 20,
-                  vertical: isSmallScreen ? 12 : 16,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: Stack(
+          children: [
+            CustomScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildSliverAppBar(provider),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: Column(
+                      children: [
+                        _buildIdentityCard(),
+                        _buildStatsRow(),
+                        _buildAboutSection(),
+                        _buildWorkingHours(),
+                        const SizedBox(height: 100),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            // Sticky bottom bar
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildBottomBar(provider),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Sliver AppBar avec photo héro ──
+  Widget _buildSliverAppBar(DoctorProvider provider) {
+    return SliverAppBar(
+      expandedHeight: 300,
+      pinned: true,
+      stretch: true,
+      backgroundColor: AppTheme.primaryColor,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.35),
+          shape: BoxShape.circle,
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          onPressed: () => Navigator.pop(context),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.35),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: Icon(
+              widget.doctor.isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: widget.doctor.isFavorite ? Colors.red.shade300 : Colors.white,
+              size: 20,
+            ),
+            onPressed: () => provider.toggleFavorite(widget.doctor.id),
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.35),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
+            onPressed: () {},
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground],
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Photo du médecin
+            widget.doctor.imageUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: widget.doctor.imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor,
+                            AppTheme.primaryColor.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) => _buildPlaceholderHero(),
+                  )
+                : _buildPlaceholderHero(),
+            // Gradient overlay
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.4),
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.6),
+                  ],
+                  stops: const [0.0, 0.4, 1.0],
+                ),
+              ),
+            ),
+            // Badge spécialité en bas à gauche
+            Positioned(
+              bottom: 20,
+              left: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      widget.doctor.specialization,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Dr. ${widget.doctor.name}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      shadows: [
+                        Shadow(color: Colors.black45, blurRadius: 8),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Badge rating en bas à droite
+            Positioned(
+              bottom: 24,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Nom et spécialité
+                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
                     Text(
-                      widget.doctor.name,
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 22 : 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textColor,
+                      widget.doctor.rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Colors.black87,
                       ),
                     ),
-                    SizedBox(height: isSmallScreen ? 4 : 8),
                     Text(
-                      '${widget.doctor.specialization} - ${widget.doctor.hospital}',
+                      ' (${widget.doctor.reviews})',
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
-                        color: AppTheme.greyColor,
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
                       ),
                     ),
-
-                    SizedBox(height: isSmallScreen ? 16 : 20),
-
-                    // Statistiques
-                    _buildStatsSection(isSmallScreen),
-
-                    SizedBox(height: isSmallScreen ? 20 : 24),
-
-                    // À propos du médecin
-                    _buildAboutSection(isSmallScreen),
-
-                    SizedBox(height: isSmallScreen ? 20 : 24),
-
-                    // Horaires de travail
-                    _buildWorkingTimeSection(isSmallScreen),
-
-                    SizedBox(height: isSmallScreen ? 20 : 24),
-
-                    // Calendrier
-                    _buildCalendarSection(isSmallScreen),
-
-                    SizedBox(height: isSmallScreen ? 20 : 24),
-
-                    // Créneaux horaires
-                    _buildTimeSlotsSection(isSmallScreen),
-
-                    SizedBox(height: isSmallScreen ? 40 : 48),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-
-      // Bouton de prise de rendez-vous (MODIFIÉ)
-      bottomNavigationBar:
-          _buildBookAppointmentButton(isSmallScreen, screenWidth),
     );
   }
 
-  Widget _buildDoctorHeader(double screenWidth, DoctorProvider provider) {
-    final isSmallScreen = screenWidth < 360;
-    final headerHeight = isSmallScreen ? 280.0 : 320.0;
-
-    return Stack(
-      children: [
-        // Images carousel
-        SizedBox(
-          height: headerHeight,
-          width: double.infinity,
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
-            },
-            itemCount: _doctorImages.length,
-            itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: _doctorImages[index],
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: AppTheme.lightGrey,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: AppTheme.lightGrey,
-                  child:
-                      const Icon(Icons.person, size: 100, color: Colors.white),
-                ),
-              );
-            },
-          ),
+  Widget _buildPlaceholderHero() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+      ),
+      child: Center(
+        child: Icon(Icons.person, size: 100, color: Colors.white.withOpacity(0.5)),
+      ),
+    );
+  }
 
-        // Overlay gradient
-        Container(
-          height: headerHeight,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withOpacity(0.5),
-                Colors.transparent,
-                Colors.transparent,
-                Colors.black.withOpacity(0.3),
-              ],
-            ),
+  // ── Carte identité ──
+  Widget _buildIdentityCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-        ),
-
-        // Boutons de navigation
-        Positioned(
-          top: isSmallScreen ? 12 : 16,
-          left: isSmallScreen ? 12 : 16,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: isSmallScreen ? 36 : 40,
-                minHeight: isSmallScreen ? 36 : 40,
-              ),
-            ),
-          ),
-        ),
-
-        Positioned(
-          top: isSmallScreen ? 12 : 16,
-          right: isSmallScreen ? 12 : 16,
-          child: Row(
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
               Container(
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  shape: BoxShape.circle,
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: IconButton(
-                  icon: Icon(
-                    widget.doctor.isFavorite
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    color: widget.doctor.isFavorite ? Colors.red : Colors.black,
-                  ),
-                  onPressed: () {
-                    provider.toggleFavorite(widget.doctor.id);
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(
-                    minWidth: isSmallScreen ? 36 : 40,
-                    minHeight: isSmallScreen ? 36 : 40,
-                  ),
+                child: Icon(Icons.local_hospital_outlined,
+                    color: AppTheme.primaryColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.doctor.hospital,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      '${widget.doctor.experience} ans d\'expérience',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(width: isSmallScreen ? 8 : 12),
               Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.share, color: Colors.black),
-                  onPressed: () {},
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(
-                    minWidth: isSmallScreen ? 36 : 40,
-                    minHeight: isSmallScreen ? 36 : 40,
+                child: Text(
+                  '${widget.doctor.consultationFee.toStringAsFixed(0)} €',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
                   ),
                 ),
               ),
             ],
           ),
-        ),
+          if (widget.doctor.languages.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(Icons.language, size: 14, color: Colors.grey.shade400),
+                const SizedBox(width: 8),
+                Wrap(
+                  spacing: 6,
+                  children: widget.doctor.languages.map((lang) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        lang,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-        // Indicateurs de page
-        Positioned(
-          bottom: isSmallScreen ? 16 : 20,
-          right: isSmallScreen ? 16 : 20,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 8 : 12,
-              vertical: isSmallScreen ? 4 : 6,
+  // ── Ligne stats ──
+  Widget _buildStatsRow() {
+    final stats = [
+      {'icon': Icons.people_rounded, 'value': '1000+', 'label': 'Patients', 'color': Colors.blue},
+      {'icon': Icons.workspace_premium, 'value': '${widget.doctor.experience}', 'label': 'Ans exp.', 'color': Colors.orange},
+      {'icon': Icons.star_rounded, 'value': widget.doctor.rating.toStringAsFixed(1), 'label': 'Note', 'color': Colors.amber},
+      {'icon': Icons.rate_review_outlined, 'value': '${widget.doctor.reviews}', 'label': 'Avis', 'color': Colors.green},
+    ];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: stats.map((s) {
+          final color = s['color'] as Color;
+          return Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(s['icon'] as IconData, color: color, size: 22),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                s['value'] as String,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                s['label'] as String,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── À propos ──
+  Widget _buildAboutSection() {
+    final description = widget.doctor.description ??
+        'Dr. ${widget.doctor.name.split(' ').last} est un spécialiste en ${widget.doctor.specialization.toLowerCase()} renommé à ${widget.doctor.hospital}. Avec ${widget.doctor.experience} ans d\'expérience, il/elle a traité plus de 1000 patients avec un dévouement exceptionnel. Disponible pour des consultations en présentiel, en vidéo et en audio.';
+
+    final isLong = description.length > 200;
+    final displayText = isLong && !_isDescriptionExpanded
+        ? '${description.substring(0, 200)}…'
+        : description;
+
+    return _buildSection(
+      title: 'À propos',
+      icon: Icons.info_outline_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 14.5,
+              color: Colors.grey.shade700,
+              height: 1.6,
             ),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-            ),
-            child: Text(
-              '${_currentImageIndex + 1}/${_doctorImages.length}',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isSmallScreen ? 12 : 14,
-                fontWeight: FontWeight.w500,
+          ),
+          if (isLong) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () =>
+                  setState(() => _isDescriptionExpanded = !_isDescriptionExpanded),
+              child: Text(
+                _isDescriptionExpanded ? 'Voir moins' : 'Voir plus',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildStatsSection(bool isSmallScreen) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _buildStatItem(
-          'Patients',
-          '1000+',
-          Icons.people_outline,
-          isSmallScreen,
-        ),
-        _buildStatItem(
-          'Expérience',
-          '${widget.doctor.experience} ans',
-          Icons.work_outline,
-          isSmallScreen,
-        ),
-        _buildStatItem(
-          'Avis',
-          '${widget.doctor.reviews}',
-          Icons.star_outline,
-          isSmallScreen,
-        ),
-        _buildStatItem(
-          'Tarif',
-          '\$${widget.doctor.consultationFee}',
-          Icons.attach_money_outlined,
-          isSmallScreen,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(
-      String title, String value, IconData icon, bool isSmallScreen) {
-    return Column(
-      children: [
-        Container(
-          width: isSmallScreen ? 48 : 56,
-          height: isSmallScreen ? 48 : 56,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: AppTheme.primaryColor,
-            size: isSmallScreen ? 20 : 24,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 6 : 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: isSmallScreen ? 14 : 16,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textColor,
-          ),
-        ),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: isSmallScreen ? 10 : 12,
-            color: AppTheme.greyColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAboutSection(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'À propos du médecin',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 18 : 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textColor,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 8 : 12),
-        Text(
-          widget.doctor.description ??
-              'Dr. ${widget.doctor.name.split(' ').last} est un spécialiste ${widget.doctor.specialization.toLowerCase()} renommé à ${widget.doctor.hospital}. Avec ${widget.doctor.experience} ans d\'expérience, il/elle a traité plus de 1000 patients et a reçu plusieurs prix pour sa contribution exceptionnelle dans son domaine. Il/elle est disponible pour des consultations privées.',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 14 : 16,
-            color: Colors.grey[600],
-            height: 1.5,
-          ),
-          textAlign: TextAlign.justify,
-        ),
-
-        SizedBox(height: isSmallScreen ? 12 : 16),
-
-        // Langues parlées
-        Wrap(
-          spacing: isSmallScreen ? 8 : 12,
-          runSpacing: isSmallScreen ? 8 : 12,
-          children: widget.doctor.languages.map((language) {
-            return Chip(
-              label: Text(language),
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-              labelStyle: TextStyle(
-                color: AppTheme.primaryColor,
-                fontSize: isSmallScreen ? 12 : 14,
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWorkingTimeSection(bool isSmallScreen) {
+  // ── Horaires ──
+  Widget _buildWorkingHours() {
     final Map<String, dynamic> schedule = widget.doctor.availability ??
         {
           'Lundi': ['09:00', '18:00'],
@@ -409,229 +523,143 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
           'Dimanche': ['Fermé'],
         };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Horaires de travail',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 18 : 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textColor,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 12 : 16),
-        Container(
-          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-            border: Border.all(color: AppTheme.lightGrey),
-          ),
-          child: Column(
-            children: schedule.entries.map((entry) {
-              final isClosed = entry.value[0] == 'Fermé';
-              return Padding(
-                padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      entry.key,
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
-                        color: AppTheme.textColor,
-                      ),
-                    ),
-                    Text(
-                      isClosed
-                          ? 'Fermé'
-                          : '${entry.value[0]} - ${entry.value[1]}',
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
-                        color: isClosed ? Colors.red : AppTheme.primaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
+    final today = DateFormat('EEEE', 'fr_FR').format(DateTime.now());
+    final todayCapitalized = today[0].toUpperCase() + today.substring(1);
 
-  Widget _buildCalendarSection(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Calendrier',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 18 : 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textColor,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 12 : 16),
-        SizedBox(
-          height: isSmallScreen ? 100 : 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _availableDates.length,
-            itemBuilder: (context, index) {
-              final date = _availableDates[index];
-              final isSelected = _selectedDate.day == date.day;
-              final isToday = date.day == DateTime.now().day;
+    return _buildSection(
+      title: 'Horaires',
+      icon: Icons.access_time_rounded,
+      child: Column(
+        children: schedule.entries.map((entry) {
+          final isClosed = entry.value is List &&
+              (entry.value as List).isNotEmpty &&
+              entry.value[0] == 'Fermé';
+          final isToday = entry.key == todayCapitalized;
 
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedDate = date;
-                  });
-                },
-                child: Container(
-                  width: isSmallScreen ? 70 : 80,
-                  margin: EdgeInsets.only(
-                    right: index == _availableDates.length - 1 ? 0 : 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppTheme.primaryColor : Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(isSmallScreen ? 12 : 16),
-                    border: Border.all(
-                      color: isToday && !isSelected
-                          ? AppTheme.primaryColor
-                          : AppTheme.lightGrey,
-                      width: isToday && !isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        DateFormat('EEE').format(date),
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          color: isSelected ? Colors.white : AppTheme.greyColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: isSmallScreen ? 4 : 8),
-                      Text(
-                        DateFormat('dd').format(date),
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 20 : 24,
-                          color: isSelected ? Colors.white : AppTheme.textColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: isSmallScreen ? 4 : 8),
-                      Text(
-                        DateFormat('MMM').format(date),
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          color: isSelected ? Colors.white : AppTheme.greyColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeSlotsSection(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Créneaux horaires disponibles',
-          style: TextStyle(
-            fontSize: isSmallScreen ? 18 : 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textColor,
-          ),
-        ),
-        SizedBox(height: isSmallScreen ? 12 : 16),
-        Wrap(
-          spacing: isSmallScreen ? 8 : 12,
-          runSpacing: isSmallScreen ? 8 : 12,
-          children: List.generate(_timeSlots.length, (index) {
-            final slot = _timeSlots[index];
-            final isSelected = _selectedTimeSlot == index;
-            final isAvailable = slot['isAvailable'] as bool;
-
-            return GestureDetector(
-              onTap: isAvailable
-                  ? () {
-                      setState(() {
-                        _selectedTimeSlot = index;
-                      });
-                    }
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+            margin: const EdgeInsets.only(bottom: 6),
+            decoration: BoxDecoration(
+              color: isToday
+                  ? AppTheme.primaryColor.withOpacity(0.06)
+                  : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: isToday
+                  ? Border.all(color: AppTheme.primaryColor.withOpacity(0.25))
                   : null,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 16 : 20,
-                  vertical: isSmallScreen ? 10 : 12,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppTheme.primaryColor
-                      : isAvailable
-                          ? Colors.white
-                          : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryColor
-                        : isAvailable
-                            ? AppTheme.lightGrey
-                            : Colors.grey[300]!,
+            ),
+            child: Row(
+              children: [
+                if (isToday)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-                child: Text(
-                  slot['time'] as String,
+                Text(
+                  entry.key,
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 13 : 14,
-                    color: isSelected
-                        ? Colors.white
-                        : isAvailable
-                            ? AppTheme.textColor
-                            : Colors.grey[400],
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: 14,
+                    fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                    color: isToday ? AppTheme.primaryColor : Colors.black87,
                   ),
                 ),
-              ),
-            );
-          }),
-        ),
-      ],
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isClosed
+                        ? Colors.red.withOpacity(0.1)
+                        : Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    isClosed
+                        ? 'Fermé'
+                        : '${entry.value[0]} – ${entry.value[1]}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isClosed ? Colors.red.shade600 : Colors.green.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
-// Widget _buildBookAppointmentButton corrigé dans DoctorDetailPage.dart
-  Widget _buildBookAppointmentButton(bool isSmallScreen, double screenWidth) {
+  // ── Section helper ──
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 16 : 20,
-        vertical: isSmallScreen ? 12 : 16,
-      ),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: AppTheme.lightGrey)),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppTheme.primaryColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  // ── Bottom bar ──
+  Widget _buildBottomBar(DoctorProvider provider) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          20, 14, 20, 14 + MediaQuery.of(context).padding.bottom),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -642,49 +670,49 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Tarif de consultation',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  color: AppTheme.greyColor,
-                ),
+                'Consultation',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
               Text(
-                '\$${widget.doctor.consultationFee}',
+                '${widget.doctor.consultationFee.toStringAsFixed(0)} €',
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 20 : 24,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
                   color: AppTheme.primaryColor,
                 ),
               ),
             ],
           ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  // CORRECTION ICI: utiliser widget.doctor au lieu de doctor
-                  builder: (context) =>
-                      BookAppointmentPage(doctor: widget.doctor),
+          const SizedBox(width: 16),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BookAppointmentPage(doctor: widget.doctor),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 24 : 32,
-                vertical: isSmallScreen ? 14 : 16,
+                elevation: 0,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              'Prendre rendez-vous',
-              style: TextStyle(
-                fontSize: isSmallScreen ? 14 : 16,
-                fontWeight: FontWeight.w600,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.calendar_month, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Prendre rendez-vous',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
             ),
           ),

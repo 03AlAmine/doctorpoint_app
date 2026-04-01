@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:doctorpoint/data/models/doctor_model.dart';
 import 'package:doctorpoint/services/appointment_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class PatientAppointmentService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -219,20 +220,161 @@ class PatientAppointmentService {
     return _appointmentService.getPatientAppointments(user.uid);
   }
 
-  // Récupérer les rendez-vous à venir
-  Future<List<Map<String, dynamic>>> getUpcomingAppointments() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return [];
+// lib/services/patient_appointment_service.dart - CORRECTION
 
-      final appointments = await _appointmentService.getUpcomingPatientAppointments(user.uid);
-      return appointments;
-    } catch (e) {
-      print('Erreur récupération rendez-vous à venir: $e');
-      return [];
+// MODIFIER la méthode getUpcomingAppointments
+Future<List<Map<String, dynamic>>> getUpcomingAppointments() async {
+  try {
+    final user = _auth.currentUser;
+    if (user == null) return [];
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+
+    final snapshot = await _db
+        .collection('appointments')
+        .where('patientId', isEqualTo: user.uid)
+        .where('dateTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('status', whereIn: ['pending', 'confirmed'])
+        .orderBy('dateTime', descending: false)
+        .get();
+
+    return await _processAppointments(snapshot);
+  } catch (e) {
+    print('Erreur récupération rendez-vous à venir: $e');
+    return [];
+  }
+}
+
+// MODIFIER la méthode _getAllPatientAppointments
+Future<List<Map<String, dynamic>>> _getAllPatientAppointments() async {
+  final user = _auth.currentUser;
+  if (user == null) return [];
+
+  try {
+    final snapshot = await _db
+        .collection('appointments')
+        .where('patientId', isEqualTo: user.uid)
+        .orderBy('dateTime', descending: true)
+        .get();
+
+    final appointments = <Map<String, dynamic>>[];
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final doctorId = data['doctorId'];
+      Doctor? doctor;
+
+      if (doctorId != null) {
+        final doctorDoc = await _db.collection('doctors').doc(doctorId).get();
+        if (doctorDoc.exists) {
+          doctor = Doctor.fromFirestore(doctorDoc);
+        }
+      }
+
+      // Utiliser le champ dateTime pour extraire la date
+      DateTime appointmentDateTime;
+      if (data['dateTime'] != null) {
+        appointmentDateTime = (data['dateTime'] as Timestamp).toDate();
+      } else {
+        // Fallback pour les anciens rendez-vous
+        final dateStr = data['date'] as String? ?? '';
+        final timeStr = data['time'] as String? ?? '00:00';
+        try {
+          final dateParts = dateStr.split('-');
+          final timeParts = timeStr.split(':');
+          appointmentDateTime = DateTime(
+            int.parse(dateParts[0]),
+            int.parse(dateParts[1]),
+            int.parse(dateParts[2]),
+            int.parse(timeParts[0]),
+            int.parse(timeParts[1]),
+          );
+        } catch (e) {
+          appointmentDateTime = DateTime.now();
+        }
+      }
+
+      appointments.add({
+        'id': doc.id,
+        'doctor': doctor,
+        'patientName': data['patientName'] as String? ?? 
+            await _getPatientNameFromUsers(user.uid),
+        'date': data['date'] ?? DateFormat('yyyy-MM-dd').format(appointmentDateTime),
+        'time': data['time'] ?? DateFormat('HH:mm').format(appointmentDateTime),
+        'dateTime': appointmentDateTime,
+        'type': data['type'] ?? 'Présentiel',
+        'status': data['status'] ?? 'pending',
+        'reason': data['reason'] ?? data['symptoms'] ?? 'Consultation',
+        'symptoms': data['symptoms'],
+        'notes': data['notes'],
+        'amount': (data['amount'] ?? 0.0).toDouble(),
+        'paymentStatus': data['paymentStatus'] ?? 'pending',
+        'cancellationReason': data['cancellationReason'],
+        'createdAt': (data['createdAt'] as Timestamp?)?.toDate(),
+      });
     }
+
+    return appointments;
+  } catch (e) {
+    print('Erreur récupération tous les rendez-vous: $e');
+    return [];
+  }
+}
+
+// AJOUTER cette méthode utilitaire
+Future<String> _getPatientNameFromUsers(String patientId) async {
+  try {
+    final userDoc = await _db.collection('users').doc(patientId).get();
+    if (userDoc.exists) {
+      return userDoc.data()!['fullName'] as String? ?? 'Patient';
+    }
+  } catch (e) {
+    print('Erreur récupération nom patient: $e');
+  }
+  return 'Patient';
+}
+
+// AJOUTER cette méthode de traitement
+Future<List<Map<String, dynamic>>> _processAppointments(QuerySnapshot snapshot) async {
+  final appointments = <Map<String, dynamic>>[];
+
+  for (var doc in snapshot.docs) {
+    final data = doc.data() as Map<String, dynamic>;
+    final doctorId = data['doctorId'];
+    Doctor? doctor;
+
+    if (doctorId != null) {
+      final doctorDoc = await _db.collection('doctors').doc(doctorId).get();
+      if (doctorDoc.exists) {
+        doctor = Doctor.fromFirestore(doctorDoc);
+      }
+    }
+
+    appointments.add({
+      'id': doc.id,
+      'doctor': doctor,
+      'patientId': data['patientId'],
+      'patientName': data['patientName'] as String? ?? 
+          await _getPatientNameFromUsers(data['patientId'] as String? ?? ''),
+      'date': data['date'],
+      'time': data['time'],
+      'type': data['type'] ?? 'Présentiel',
+      'status': data['status'] ?? 'pending',
+      'reason': data['reason'] ?? data['symptoms'] ?? 'Consultation',
+      'symptoms': data['symptoms'],
+      'notes': data['notes'],
+      'amount': (data['amount'] ?? 0.0).toDouble(),
+      'paymentStatus': data['paymentStatus'] ?? 'pending',
+      'cancellationReason': data['cancellationReason'],
+      'createdAt': (data['createdAt'] as Timestamp?)?.toDate(),
+      'confirmedAt': (data['confirmedAt'] as Timestamp?)?.toDate(),
+      'cancelledAt': (data['cancelledAt'] as Timestamp?)?.toDate(),
+    });
   }
 
+  return appointments;
+}
   // Récupérer les rendez-vous passés
   Future<List<Map<String, dynamic>>> getPastAppointments() async {
     try {
@@ -271,58 +413,4 @@ class PatientAppointmentService {
     }
   }
 
-  // Récupérer tous les rendez-vous du patient
-  Future<List<Map<String, dynamic>>> _getAllPatientAppointments() async {
-    final user = _auth.currentUser;
-    if (user == null) return [];
-
-    try {
-      final snapshot = await _db
-          .collection('appointments')
-          .where('patientId', isEqualTo: user.uid)
-          .orderBy('date', descending: true)
-          .orderBy('time', descending: true)
-          .get();
-
-      final appointments = <Map<String, dynamic>>[];
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final doctorId = data['doctorId'];
-        Doctor? doctor;
-
-        if (doctorId != null) {
-          final doctorDoc = await _db.collection('doctors').doc(doctorId).get();
-          if (doctorDoc.exists) {
-            doctor = Doctor.fromFirestore(doctorDoc);
-          }
-        }
-
-        // Utiliser patientName du rendez-vous s'il existe, sinon fallback
-        final patientName = data['patientName'] as String? ?? 'Patient';
-
-        appointments.add({
-          'id': doc.id,
-          'doctor': doctor,
-          'patientName': patientName,
-          'date': data['date'],
-          'time': data['time'],
-          'type': data['type'] ?? 'Présentiel',
-          'status': data['status'] ?? 'pending',
-          'reason': data['reason'] ?? data['symptoms'] ?? 'Consultation',
-          'symptoms': data['symptoms'],
-          'notes': data['notes'],
-          'amount': (data['amount'] ?? 0.0).toDouble(),
-          'paymentStatus': data['paymentStatus'] ?? 'pending',
-          'cancellationReason': data['cancellationReason'],
-          'createdAt': (data['createdAt'] as Timestamp?)?.toDate(),
-        });
-      }
-
-      return appointments;
-    } catch (e) {
-      print('Erreur récupération tous les rendez-vous: $e');
-      return [];
-    }
-  }
 }

@@ -47,6 +47,20 @@ class _DoctorPatientsPageState extends State<DoctorPatientsPage> {
 
   String _searchQuery = '';
   String _filterStatus = 'Tous';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPatients();
+  }
+
+  Future<void> _loadPatients() async {
+    // Simuler un chargement
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() => _isLoading = false);
+  }
 
   List<Map<String, dynamic>> get _filteredPatients {
     return _patients.where((patient) {
@@ -56,6 +70,107 @@ class _DoctorPatientsPageState extends State<DoctorPatientsPage> {
           _filterStatus == 'Tous' || patient['status'] == _filterStatus;
       return matchesSearch && matchesFilter;
     }).toList();
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Chargement des patients...',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Veuillez patienter',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary.withOpacity(0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.lightGrey,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.people_outline,
+              size: 60,
+              color: AppTheme.greyColor.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _searchQuery.isEmpty
+                ? 'Aucun patient enregistré'
+                : 'Aucun patient trouvé',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _searchQuery.isEmpty
+                ? 'Commencez par ajouter vos premiers patients'
+                : 'Essayez une autre recherche ou filtre',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary.withOpacity(0.7),
+            ),
+          ),
+          if (_searchQuery.isEmpty) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _addPatient,
+              icon: const Icon(Icons.person_add),
+              label: const Text('Ajouter un patient'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildPatientCard(Map<String, dynamic> patient) {
@@ -515,135 +630,127 @@ class _DoctorPatientsPageState extends State<DoctorPatientsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mes Patients'),
-        backgroundColor: AppTheme.primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            onPressed: _addPatient,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Barre de recherche et filtres
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher un patient...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+    if (_isLoading) {
+      return _buildLoadingState();
+    }
+
+    return Column(
+      children: [
+        // Barre de recherche et filtres
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Rechercher un patient...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children:
-                        ['Tous', 'Actif', 'Suivi', 'Inactif'].map((status) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          label: Text(status),
-                          selected: _filterStatus == status,
-                          onSelected: (selected) {
+                  filled: true,
+                  fillColor: Colors.white,
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
                             setState(() {
-                              _filterStatus = selected ? status : 'Tous';
+                              _searchQuery = '';
                             });
                           },
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                        )
+                      : null,
                 ),
-              ],
-            ),
-          ),
-
-          // Statistiques
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['Tous', 'Actif', 'Suivi', 'Inactif'].map((status) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(status),
+                        selected: _filterStatus == status,
+                        onSelected: (selected) {
+                          setState(() {
+                            _filterStatus = selected ? status : 'Tous';
+                          });
+                        },
+                        selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+                        checkmarkColor: AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: _filterStatus == status
+                              ? AppTheme.primaryColor
+                              : AppTheme.textSecondary,
+                          fontWeight: _filterStatus == status
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('Total', _patients.length.toString()),
-                _buildStatItem(
-                    'Actifs',
-                    _patients
-                        .where((p) => p['status'] == 'Actif')
-                        .length
-                        .toString()),
-                _buildStatItem(
-                    'Suivi',
-                    _patients
-                        .where((p) => p['status'] == 'Suivi')
-                        .length
-                        .toString()),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
 
-          const SizedBox(height: 16),
-
-          // Liste des patients
-          Expanded(
-            child: _filteredPatients.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.people,
-                          size: 80,
-                          color: AppTheme.lightGrey,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'Aucun patient enregistré'
-                              : 'Aucun patient trouvé',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppTheme.greyColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _filteredPatients.length,
-                    itemBuilder: (context, index) {
-                      return _buildPatientCard(_filteredPatients[index]);
-                    },
-                  ),
+        // Statistiques
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem('Total', _patients.length.toString()),
+              _buildStatItem(
+                  'Actifs',
+                  _patients
+                      .where((p) => p['status'] == 'Actif')
+                      .length
+                      .toString()),
+              _buildStatItem(
+                  'Suivi',
+                  _patients
+                      .where((p) => p['status'] == 'Suivi')
+                      .length
+                      .toString()),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Liste des patients
+        Expanded(
+          child: _filteredPatients.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _filteredPatients.length,
+                  itemBuilder: (context, index) {
+                    return _buildPatientCard(_filteredPatients[index]);
+                  },
+                ),
+        ),
+      ],
     );
   }
 

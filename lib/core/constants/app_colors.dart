@@ -50,4 +50,5 @@ class AppColors {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
+
 }
